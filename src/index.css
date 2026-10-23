@@ -1,0 +1,192 @@
+@import '@xyflow/react/dist/style.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --paperclip-bg: #09090b;
+    --paperclip-sidebar-bg: #09090b;
+    --paperclip-card-bg: #121215;
+    --paperclip-border: #27272a;
+    --paperclip-border-subtle: #1f1f23;
+    --paperclip-text-primary: #fafafa;
+    --paperclip-text-secondary: #a1a1aa;
+    --paperclip-text-muted: #71717a;
+    --paperclip-hover: #18181b;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    background-color: var(--paperclip-bg);
+    color: var(--paperclip-text-secondary);
+  }
+}
+
+/* Strictly Suppress React Flow Attribution Watermark */
+.react-flow__attribution {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Custom Scrollbar - Paperclip Native Style */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.6);
+}
+
+/* ─── Themes ─────────────────────────────────────────────── */
+
+/* 1. Paperclip Dark Theme (Pitch Black / Deep Obsidian) */
+.theme-dark {
+  --paperclip-bg: #09090b;
+  --paperclip-sidebar-bg: #09090b;
+  --paperclip-card-bg: #121215;
+  --paperclip-border: #27272a;
+  --paperclip-border-subtle: #1f1f23;
+  --paperclip-text-primary: #fafafa;
+  --paperclip-text-secondary: #a1a1aa;
+  --paperclip-text-muted: #71717a;
+  --paperclip-hover: #18181b;
+  background-color: #09090b;
+  color: #a1a1aa;
+}
+
+/* 2. Paperclip Light Theme (Clean Minimal Paper) */
+.theme-light {
+  --paperclip-bg: #ffffff;
+  --paperclip-sidebar-bg: #fafafa;
+  --paperclip-card-bg: #ffffff;
+  --paperclip-border: #e4e4e7;
+  --paperclip-border-subtle: #f4f4f5;
+  --paperclip-text-primary: #09090b;
+  --paperclip-text-secondary: #52525b;
+  --paperclip-text-muted: #71717a;
+  --paperclip-hover: #f4f4f5;
+  background-color: #ffffff;
+  color: #09090b;
+}
+
+/* ─── Node Card Adaptive Theming (Light & Dark) ─────────── */
+.theme-light .paperclip-node-card {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+}
+.theme-light .paperclip-node-card:hover {
+  border-color: #a1a1aa !important;
+}
+.theme-light .paperclip-node-card.selected {
+  border-color: #18181b !important;
+  box-shadow: 0 0 0 2px #18181b !important;
+}
+.theme-light .paperclip-node-card .node-title {
+  color: #18181b !important;
+}
+.theme-light .paperclip-node-card .node-subtitle {
+  color: #71717a !important;
+}
+.theme-light .paperclip-node-card .node-tag {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+.theme-light .paperclip-node-card .node-guide-box {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+.theme-light .paperclip-node-card .node-status-border {
+  border-color: #ffffff !important;
+}
+
+/* ─── React Flow Canvas Integration ─────────────────────── */
+.theme-dark .react-flow__background {
+  background-color: #09090b !important;
+}
+
+.theme-light .react-flow__background {
+  background-color: #ffffff !important;
+}
+
+.theme-dark .react-flow__edge-path {
+  stroke: #3f3f46;
+  stroke-width: 1.5;
+}
+
+.theme-light .react-flow__edge-path {
+  stroke: #d4d4d8;
+  stroke-width: 1.5;
+}
+
+.react-flow__controls {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.theme-dark .react-flow__controls {
+  background-color: #121215 !important;
+  border: 1px solid #27272a !important;
+}
+
+.theme-light .react-flow__controls {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+.theme-dark .react-flow__controls-button {
+  background-color: #121215 !important;
+  border-bottom: 1px solid #27272a !important;
+  fill: #a1a1aa !important;
+  color: #a1a1aa !important;
+}
+
+.theme-light .react-flow__controls-button {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e4e4e7 !important;
+  fill: #52525b !important;
+  color: #52525b !important;
+}
+
+.theme-dark .react-flow__controls-button:hover {
+  background-color: #1f1f23 !important;
+  fill: #ffffff !important;
+}
+
+.theme-light .react-flow__controls-button:hover {
+  background-color: #f4f4f5 !important;
+  fill: #000000 !important;
+}
+
+/* MiniMap Styling */
+.theme-dark .react-flow__minimap {
+  background-color: #121215 !important;
+  border: 1px solid #27272a !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.theme-light .react-flow__minimap {
+  background-color: #f4f4f5 !important;
+  border: 1px solid #e4e4e7 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}

@@ -1,0 +1,75 @@
+{
+  "name": "formative",
+  "version": "1.0.0",
+  "description": "Desktop Software Architecture Studio & Single-Agent Orchestration Canvas",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "start": "electron .",
+    "desktop": "tsc && vite build && electron .",
+    "dist": "tsc && vite build && electron-builder --win",
+    "dist:dir": "tsc && vite build && electron-builder --win --dir",
+    "dist:portable": "tsc && vite build && electron-builder --win portable"
+  },
+  "keywords": [
+    "architecture",
+    "ai-agent",
+    "telemetry",
+    "workflow",
+    "canvas",
+    "formative",
+    "claude-code",
+    "antigravity",
+    "opencode",
+    "codex"
+  ],
+  "author": "Formative Open Source Community",
+  "license": "MIT",
+  "build": {
+    "appId": "dev.formative.studio",
+    "productName": "Formative",
+    "directories": {
+      "output": "build-release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/icon.ico",
+      "public/assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "dir",
+        "portable"
+      ],
+      "icon": "public/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    }
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.4.4",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.4.10",
+    "lucide-react": "^1.16.0",
+    "pixi.js": "^8.22.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.15.3",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}
