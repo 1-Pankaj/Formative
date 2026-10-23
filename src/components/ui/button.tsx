@@ -65,7 +65,7 @@ const buttonVariants = cva(
         
         // Danger button
         danger: `
-          bg-color-error text-white
+          bg-red-500 text-white
           hover:bg-red-600
           active:bg-red-700
         `,
@@ -96,6 +96,7 @@ const buttonVariants = cva(
         // Special sizes for canvas
         canvas: 'h-8 px-3 text-xs',
         nav: 'h-8 w-8 p-0',
+        icon: 'h-8 w-8 p-0',
       },
       
       // Light mode overrides
@@ -203,29 +204,27 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const Comp = asChild ? Slot : 'button';
-    
-    // Apply light mode variants if theme is light
-    const lightProps = theme === 'light' ? { light: true } : {};
+    const isDark = theme === 'dark';
     
     return (
       <Comp
         className={cn(
-          buttonVariants({ variant, size, className, ...lightProps }),
+          buttonVariants({ variant, size, className }),
           // Dark mode specific classes
-          theme === 'dark' && variant === 'secondary' && `
-            bg-surface-hover text-text-primary
-            hover:bg-surface-active
-            border border-border
+          isDark && variant === 'secondary' && `
+            bg-dark-surface-hover text-dark-text-primary
+            hover:bg-dark-surface-active
+            border border-dark-border
           `,
-          theme === 'dark' && variant === 'outline' && `
-            bg-transparent text-text-primary
-            border border-border
-            hover:bg-surface-hover
+          isDark && variant === 'outline' && `
+            bg-transparent text-dark-text-primary
+            border border-dark-border
+            hover:bg-dark-surface-hover
           `,
-          theme === 'dark' && variant === 'ghost' && `
-            bg-transparent text-text-secondary
-            hover:bg-surface-hover
-            hover:text-text-primary
+          isDark && variant === 'ghost' && `
+            bg-transparent text-dark-text-secondary
+            hover:bg-dark-surface-hover
+            hover:text-dark-text-primary
           `,
         )}
         ref={ref}

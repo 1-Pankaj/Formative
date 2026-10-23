@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Layers, FolderOpen, Code, Bot, Database, Network, Cpu, Zap } from 'lucide-react';
+import { Plus, Layers, Network, Code, Bot, Database, Zap, Server } from 'lucide-react';
 import { Project, ThemeMode, ProjectType } from '../types';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
@@ -119,6 +119,16 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     setStep('type');
   };
 
+  // Get icon for selected type
+  const getTypeIcon = () => {
+    const type = projectTypes.find(t => t.id === selectedType);
+    if (type) {
+      const Icon = type.icon;
+      return <Icon className="w-4 h-4 text-brand-primary" />;
+    }
+    return null;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent theme={theme} size="lg" onClose={onClose}>
@@ -201,7 +211,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                     `w-full px-3 py-2 rounded-lg border text-sm resize-none`,
                     `focus:outline-none focus:ring-2 focus:ring-brand-primary`,
                     isDark
-                      ? 'bg-dark-surface border-dark-border text-text-primary placeholder:text-muted min-h-[100px]'
+                      ? 'bg-dark-surface border-dark-border text-dark-text-primary placeholder:text-dark-text-muted min-h-[100px]'
                       : 'bg-white border-light-border text-zinc-900 placeholder:text-zinc-400 min-h-[100px]'
                   )}
                 />
@@ -214,7 +224,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 </p>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-hover">
-                    {projectTypes.find(t => t.id === selectedType)?.icon({ className: 'w-4 h-4 text-brand-primary' })}
+                    {getTypeIcon()}
                   </div>
                   <span className="text-sm font-medium">
                     {projectTypes.find(t => t.id === selectedType)?.label}

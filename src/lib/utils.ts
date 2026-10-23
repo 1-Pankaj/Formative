@@ -198,11 +198,11 @@ export function toggle<T>(arr: T[], value: T): T[] {
 /**
  * Deep merges two objects.
  */
-export function deepMerge<T extends Record<string, any>>(
+export function deepMerge<T extends Record<string, any>, S extends Record<string, any>>(
   target: T,
-  source: Partial<T>
-): T {
-  const result = { ...target };
+  source: S
+): T & S {
+  const result = { ...target } as T & S;
   
   for (const key in source) {
     if (Object.prototype.hasOwnProperty.call(source, key)) {
@@ -217,9 +217,12 @@ export function deepMerge<T extends Record<string, any>>(
         typeof targetValue === 'object' &&
         !Array.isArray(targetValue)
       ) {
-        result[key] = deepMerge(targetValue, sourceValue);
+        result[key] = deepMerge(
+          targetValue as Record<string, any>,
+          sourceValue as Record<string, any>
+        ) as any;
       } else {
-        result[key] = sourceValue;
+        result[key] = sourceValue as any;
       }
     }
   }

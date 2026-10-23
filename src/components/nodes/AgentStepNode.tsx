@@ -142,12 +142,12 @@ export const AgentStepNode: React.FC<AgentStepNodeProps> = ({ id, data, selected
               size="icon"
               theme="dark"
               onClick={toggleExpanded}
-              className="h-5 w-5 p-0"
+              className="h-6 w-6 p-0"
             >
               {expanded ? (
-                <ChevronUp className="w-3 h-3" />
+                <ChevronUp className="w-3.5 h-3.5" />
               ) : (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3.5 h-3.5" />
               )}
             </Button>
           </div>

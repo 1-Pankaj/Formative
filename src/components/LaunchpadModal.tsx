@@ -15,14 +15,15 @@ import {
   ArrowRight,
   Search,
   Crown,
-  Cpu,
+  Code,
   Terminal,
   Database,
   FileText,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Network
 } from 'lucide-react';
-import { Project, ThemeMode, AgentProvider, AgentSession } from '../types';
+import { Project, ThemeMode, AgentProvider, AgentSession, ProjectType } from '../types';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Input } from './ui/input';
@@ -42,7 +43,7 @@ interface LaunchpadModalProps {
   projects: Project[];
   activeProjectId: string;
   onSelectProject: (id: string) => void;
-  onCreateBlankProject: (name: string, type: string) => void;
+  onCreateBlankProject: (name: string, type: ProjectType) => void;
   onDeleteProject: (id: string) => void;
   onLoadTemplate: (template?: Project) => void;
 }
@@ -88,12 +89,12 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
 
   // Template options
   const templates = [
-    { name: 'Full-Stack Web', type: 'web', description: 'React/Next.js frontend with API Gateway and PostgreSQL' },
-    { name: 'AI Agent Workflow', type: 'ai-system', description: 'Autonomous AI agent with tool orchestration' },
-    { name: 'Microservices', type: 'backend', description: 'Cloud microservices with event-driven architecture' },
-    { name: 'Mobile Engine', type: 'mobile', description: 'React Native with GraphQL and Lambda workers' },
-    { name: 'Realtime System', type: 'realtime', description: 'Collaborative canvas with WebSocket signaling' },
-    { name: 'Data Pipeline', type: 'data-pipeline', description: 'Vector lakehouse with ingestion and embedding workers' },
+    { name: 'Full-Stack Web', type: 'web' as ProjectType, description: 'React/Next.js frontend with API Gateway and PostgreSQL' },
+    { name: 'AI Agent Workflow', type: 'ai-system' as ProjectType, description: 'Autonomous AI agent with tool orchestration' },
+    { name: 'Microservices', type: 'backend' as ProjectType, description: 'Cloud microservices with event-driven architecture' },
+    { name: 'Mobile Engine', type: 'mobile' as ProjectType, description: 'React Native with GraphQL and Lambda workers' },
+    { name: 'Realtime System', type: 'realtime' as ProjectType, description: 'Collaborative canvas with WebSocket signaling' },
+    { name: 'Data Pipeline', type: 'data-pipeline' as ProjectType, description: 'Vector lakehouse with ingestion and embedding workers' },
   ];
 
   // Handle project creation
@@ -199,74 +200,82 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                 </Card>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {filteredProjects.map((proj) => (
-                    <Card
-                      key={proj.id}
-                      variant={activeProjectId === proj.id ? 'elevated' : 'bordered'}
-                      theme={theme}
-                      onClick={() => onSelectProject(proj.id)}
-                      className="cursor-pointer"
-                    >
-                      <CardHeader theme={theme}>
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0',
-                              isDark 
-                                ? 'bg-dark-surface-hover text-text-primary' 
-                                : 'bg-light-surface-hover text-zinc-900'
-                            )}
-                          >
-                            {getInitials(proj.name, 2)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <CardTitle theme={theme} className="text-base">
-                              {proj.name}
-                            </CardTitle>
-                            <CardDescription theme={theme}>
-                              {truncate(proj.description || '', 60)}
-                            </CardDescription>
-                          </div>
-                          
-                          {/* Active indicator */}
-                          {activeProjectId === proj.id && (
-                            <span className="w-2 h-2 rounded-full bg-brand-primary" />
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardFooter theme={theme}>
-                        <div className="flex items-center justify-between w-full">
-                          <span
-                            className={cn(
-                              'text-xs font-mono px-2 py-0.5 rounded border',
-                              isDark 
-                                ? 'bg-dark-surface-hover border-dark-border text-text-muted' 
-                                : 'bg-light-surface-hover border-light-border text-zinc-600'
-                            )}
-                          >
-                            {proj.type || 'workspace'}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted">
-                              {proj.nodes?.length || 0} nodes
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              theme={theme}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteProject(proj.id);
-                              }}
-                              className="h-5 w-5 p-0"
+                  {filteredProjects.map((proj) => {
+                    const Icon = proj.type === 'web' ? Network : 
+                                proj.type === 'backend' ? Terminal : 
+                                proj.type === 'ai-system' ? Bot : 
+                                proj.type === 'mobile' ? Code : 
+                                Layers;
+                    
+                    return (
+                      <Card
+                        key={proj.id}
+                        variant={activeProjectId === proj.id ? 'elevated' : 'bordered'}
+                        theme={theme}
+                        onClick={() => onSelectProject(proj.id)}
+                        className="cursor-pointer"
+                      >
+                        <CardHeader theme={theme}>
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={cn(
+                                'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0',
+                                isDark 
+                                  ? 'bg-dark-surface-hover text-dark-text-primary' 
+                                  : 'bg-light-surface-hover text-zinc-900'
+                              )}
                             >
-                              <Trash2 className="w-3 h-3 text-red-500" />
-                            </Button>
+                              {getInitials(proj.name, 2)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <CardTitle theme={theme} className="text-base">
+                                {proj.name}
+                              </CardTitle>
+                              <CardDescription theme={theme}>
+                                {truncate(proj.description || '', 60)}
+                              </CardDescription>
+                            </div>
+                            
+                            {/* Active indicator */}
+                            {activeProjectId === proj.id && (
+                              <span className="w-2 h-2 rounded-full bg-brand-primary" />
+                            )}
                           </div>
-                        </div>
-                      </CardFooter>
-                    </Card>
-                  ))}
+                        </CardHeader>
+                        <CardFooter theme={theme}>
+                          <div className="flex items-center justify-between w-full">
+                            <span
+                              className={cn(
+                                'text-xs font-mono px-2 py-0.5 rounded border',
+                                isDark 
+                                  ? 'bg-dark-surface-hover border-dark-border text-dark-text-muted' 
+                                  : 'bg-light-surface-hover border-light-border text-zinc-600'
+                              )}
+                            >
+                              {proj.type || 'workspace'}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted">
+                                {proj.nodes?.length || 0} nodes
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                theme={theme}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteProject(proj.id);
+                                }}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
 

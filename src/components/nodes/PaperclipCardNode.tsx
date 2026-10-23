@@ -26,9 +26,7 @@ import {
 } from 'lucide-react';
 import { ArchNodeData, NodeCategory } from '../../types';
 import { Button } from '../ui/button';
-import { Card } from '../ui/card';
-import { cn, capitalize, truncate } from '../../lib/utils';
-import { colors } from '../../lib/design-tokens';
+import { cn, truncate } from '../../lib/utils';
 
 interface PaperclipCardNodeProps {
   id: string;
@@ -248,12 +246,12 @@ export const PaperclipCardNode: React.FC<PaperclipCardNodeProps> = ({ id, data, 
               size="icon"
               theme="dark"
               onClick={() => setShowHelp(!showHelp)}
-              className="h-5 w-5 p-0"
+              className="h-6 w-6 p-0"
             >
               {showHelp ? (
-                <ChevronUp className="w-3 h-3" />
+                <ChevronUp className="w-3.5 h-3.5" />
               ) : (
-                <HelpCircle className="w-3 h-3" />
+                <HelpCircle className="w-3.5 h-3.5" />
               )}
             </Button>
 
@@ -263,9 +261,9 @@ export const PaperclipCardNode: React.FC<PaperclipCardNodeProps> = ({ id, data, 
                 variant="ghost"
                 size="icon"
                 theme="dark"
-                className="h-5 w-5 p-0"
+                className="h-6 w-6 p-0"
               >
-                <ExternalLink className="w-3 h-3" />
+                <ExternalLink className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>

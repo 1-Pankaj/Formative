@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { Project, ViewMode, ThemeMode, SkillDepartment } from '../types';
 import { Button } from './ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuPortal } from './ui/dropdown-menu';
 import { cn, getInitials } from '../lib/utils';
 import formativeLogo from '../assets/FormativeLogo.png';
 
@@ -57,12 +57,6 @@ interface PaperclipNavProps {
 
 // Navigation sections configuration
 const navSections = [
-  {
-    id: 'workspaces',
-    label: 'Workspaces',
-    icon: Briefcase,
-    mode: null as ViewMode | null,
-  },
   {
     id: 'architecture',
     label: 'Architecture',
@@ -137,9 +131,6 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
   const handleNavClick = (mode: ViewMode | null) => {
     if (mode) {
       onChangeViewMode(mode);
-    } else {
-      // Toggle project dropdown
-      setIsProjectDropdownOpen(!isProjectDropdownOpen);
     }
   };
 
@@ -178,7 +169,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
             theme={theme}
             onClick={() => onChangeViewMode('welcome')}
             title="Formative Home"
-            className="hover:bg-dark-surface-hover dark:hover:bg-dark-surface-hover"
+            className="hover:bg-surface-hover"
           >
             <img
               src={formativeLogo}
@@ -267,11 +258,13 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent theme={theme} align="center">
-              <DropdownMenuItem theme={theme} onClick={onToggleTheme}>
-                {isDark ? 'Light Mode' : 'Dark Mode'}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+            <DropdownMenuPortal>
+              <DropdownMenuContent theme={theme} align="center">
+                <DropdownMenuItem theme={theme} onClick={onToggleTheme}>
+                  {isDark ? 'Light Mode' : 'Dark Mode'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
           </DropdownMenu>
 
           {/* Bottom Navigation */}
@@ -304,7 +297,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
       <div className="flex flex-col h-full w-48 p-3 overflow-y-auto">
         {/* Current Project Section */}
         <div className="mb-4">
-          <DropdownMenu open={isProjectDropdownOpen} onOpenChange={setIsProjectDropdownOpen}>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -324,7 +317,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                         className={cn(
                           'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-semibold',
                           isDark 
-                            ? 'bg-dark-surface-hover text-text-primary' 
+                            ? 'bg-dark-surface-hover text-dark-text-primary' 
                             : 'bg-light-surface-hover text-zinc-900'
                         )}
                       >
@@ -354,77 +347,75 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                 </div>
                 <ChevronDown
                   className={cn(
-                    'w-4 h-4 transition-transform',
-                    isProjectDropdownOpen && 'rotate-180'
+                    'w-4 h-4 transition-transform'
                   )}
                 />
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent theme={theme} className="w-44">
-              {/* Recent Projects */}
-              {projects.length > 0 && (
-                <>
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted">
-                    Recent Workspaces
-                  </div>
-                  {projects.slice(0, 5).map((project) => (
-                    <DropdownMenuItem
-                      key={project.id}
-                      theme={theme}
-                      onClick={() => {
-                        onSelectProject(project.id);
-                        onChangeViewMode('architecture');
-                        setIsProjectDropdownOpen(false);
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <div
-                        className={cn(
-                          'w-6 h-6 rounded-lg flex items-center justify-center text-xs font-semibold',
-                          isDark 
-                            ? 'bg-dark-surface-hover text-text-secondary' 
-                            : 'bg-light-surface-hover text-zinc-700'
-                        )}
+            <DropdownMenuPortal>
+              <DropdownMenuContent theme={theme} className="w-44">
+                {/* Recent Projects */}
+                {projects.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted">
+                      Recent Workspaces
+                    </div>
+                    {projects.slice(0, 5).map((project) => (
+                      <DropdownMenuItem
+                        key={project.id}
+                        theme={theme}
+                        onClick={() => {
+                          onSelectProject(project.id);
+                          onChangeViewMode('architecture');
+                        }}
+                        className="flex items-center gap-2"
                       >
-                        {getInitials(project.name, 2)}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{project.name}</span>
-                        <span className="text-xs text-muted">
-                          {project.type || 'workspace'}
-                        </span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
+                        <div
+                          className={cn(
+                            'w-6 h-6 rounded-lg flex items-center justify-center text-xs font-semibold',
+                            isDark 
+                              ? 'bg-dark-surface-hover text-dark-text-secondary' 
+                              : 'bg-light-surface-hover text-zinc-700'
+                          )}
+                        >
+                          {getInitials(project.name, 2)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">{project.name}</span>
+                          <span className="text-xs text-muted">
+                            {project.type || 'workspace'}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
 
-              {/* Actions */}
-              <DropdownMenuItem
-                theme={theme}
-                onClick={() => {
-                  onOpenNewProject();
-                  setIsProjectDropdownOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>New Workspace</span>
-              </DropdownMenuItem>
+                {/* Actions */}
+                <DropdownMenuItem
+                  theme={theme}
+                  onClick={() => {
+                    onOpenNewProject();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Workspace</span>
+                </DropdownMenuItem>
 
-              <DropdownMenuItem
-                theme={theme}
-                onClick={() => {
-                  onOpenLaunchpad();
-                  setIsProjectDropdownOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                <Layers className="w-4 h-4" />
-                <span>Open Workspace</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+                <DropdownMenuItem
+                  theme={theme}
+                  onClick={() => {
+                    onOpenLaunchpad();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Open Workspace</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
           </DropdownMenu>
         </div>
 
@@ -468,9 +459,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                   key={skill}
                   className={cn(
                     'px-2 py-1 rounded-lg text-xs font-medium',
-                    isDark 
-                      ? 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20' 
-                      : 'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
+                    'bg-brand-primary/10 text-brand-primary border border-brand-primary/20'
                   )}
                 >
                   {skill}

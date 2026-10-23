@@ -1078,7 +1078,7 @@ export const App: React.FC = () => {
             localStorage.setItem('formative_active_project_id', id);
             setViewMode('architecture');
           }}
-          onCreateBlankProject={handleCreateBlankProject}
+          onCreateBlankProject={(name, type) => handleCreateBlankProject(name, type as ProjectType)}
           onDeleteProject={handleDeleteProject}
           onLoadTemplate={handleLoadTemplate}
         />

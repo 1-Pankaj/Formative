@@ -34,12 +34,13 @@ export interface DropdownMenuContentProps {
   className?: string;
   align?: 'start' | 'center' | 'end';
   sideOffset?: number;
+  children?: React.ReactNode;
 }
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   DropdownMenuContentProps
->(({ className, theme = 'dark', align = 'start', sideOffset = 4, ...props }, ref) => {
+>(({ className, theme = 'dark', align = 'start', sideOffset = 4, children, ...props }, ref) => {
   const isDark = theme === 'dark';
   
   return (
@@ -60,12 +61,14 @@ const DropdownMenuContent = React.forwardRef<
             data-[side=top]:slide-in-from-bottom-2
           `,
           isDark 
-            ? 'bg-surface border-border text-text-secondary' 
-            : 'bg-white border-zinc-200 text-zinc-700',
+            ? 'bg-dark-surface border-dark-border text-dark-text-secondary' 
+            : 'bg-light-surface border-light-border text-zinc-700',
           className
         )}
         {...props}
-      />
+      >
+        {children}
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   );
 });
@@ -78,17 +81,20 @@ export interface DropdownMenuItemProps {
   className?: string;
   inset?: boolean;
   destructive?: boolean;
+  children?: React.ReactNode;
+  onClick?: () => void;
 }
 
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   DropdownMenuItemProps
->(({ className, theme = 'dark', inset, destructive = false, ...props }, ref) => {
+>(({ className, theme = 'dark', inset, destructive = false, children, onClick, ...props }, ref) => {
   const isDark = theme === 'dark';
   
   return (
     <DropdownMenuPrimitive.Item
       ref={ref}
+      onClick={onClick}
       className={cn(
         `
           relative flex cursor-default select-none items-center
@@ -98,14 +104,16 @@ const DropdownMenuItem = React.forwardRef<
           data-[disabled]:pointer-events-none data-[disabled]:opacity-50
         `,
         isDark 
-          ? 'text-text-secondary focus:text-text-primary' 
+          ? 'text-dark-text-secondary focus:text-dark-text-primary' 
           : 'text-zinc-700 focus:text-zinc-900',
         inset && 'pl-8',
         destructive && 'text-red-500 focus:text-red-600',
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </DropdownMenuPrimitive.Item>
   );
 });
 
@@ -137,7 +145,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
           focus:bg-surface-hover
         `,
         isDark 
-          ? 'text-text-secondary focus:text-text-primary' 
+          ? 'text-dark-text-secondary focus:text-dark-text-primary' 
           : 'text-zinc-700 focus:text-zinc-900',
         className
       )}
@@ -162,7 +170,7 @@ DropdownMenuRadioGroup.displayName = DropdownMenuPrimitive.RadioGroup.displayNam
 export interface DropdownMenuRadioItemProps {
   theme?: 'light' | 'dark';
   className?: string;
-  value?: string;
+  value: string;
   children?: React.ReactNode;
 }
 
@@ -184,7 +192,7 @@ const DropdownMenuRadioItem = React.forwardRef<
           focus:bg-surface-hover
         `,
         isDark 
-          ? 'text-text-secondary focus:text-text-primary' 
+          ? 'text-dark-text-secondary focus:text-dark-text-primary' 
           : 'text-zinc-700 focus:text-zinc-900',
         className
       )}
@@ -205,12 +213,13 @@ export interface DropdownMenuLabelProps {
   theme?: 'light' | 'dark';
   className?: string;
   inset?: boolean;
+  children?: React.ReactNode;
 }
 
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   DropdownMenuLabelProps
->(({ className, theme = 'dark', inset, ...props }, ref) => {
+>(({ className, theme = 'dark', inset, children, ...props }, ref) => {
   const isDark = theme === 'dark';
   
   return (
@@ -221,13 +230,15 @@ const DropdownMenuLabel = React.forwardRef<
           px-2 py-1.5 text-xs font-semibold
         `,
         isDark 
-          ? 'text-text-muted' 
+          ? 'text-dark-text-muted' 
           : 'text-zinc-500',
         inset && 'pl-8',
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </DropdownMenuPrimitive.Label>
   );
 });
 
@@ -289,7 +300,7 @@ DropdownMenuSub.displayName = DropdownMenuPrimitive.Sub.displayName;
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
   return (
     <DropdownMenuPrimitive.SubContent
       ref={ref}
@@ -308,7 +319,9 @@ const DropdownMenuSubContent = React.forwardRef<
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </DropdownMenuPrimitive.SubContent>
   );
 });
 
@@ -340,7 +353,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
           data-[state=open]:bg-surface-hover
         `,
         isDark 
-          ? 'text-text-secondary focus:text-text-primary' 
+          ? 'text-dark-text-secondary focus:text-dark-text-primary' 
           : 'text-zinc-700 focus:text-zinc-900',
         inset && 'pl-8',
         className
