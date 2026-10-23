@@ -3,30 +3,142 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * Formative Design System - Base Styles
+ * ============================================================================ */
+
 @layer base {
   :root {
-    --paperclip-bg: #09090b;
-    --paperclip-sidebar-bg: #09090b;
-    --paperclip-card-bg: #121215;
-    --paperclip-border: #27272a;
-    --paperclip-border-subtle: #1f1f23;
-    --paperclip-text-primary: #fafafa;
-    --paperclip-text-secondary: #a1a1aa;
-    --paperclip-text-muted: #71717a;
-    --paperclip-hover: #18181b;
+    /* Light mode tokens (default) */
+    --color-background: #FFFFFF;
+    --color-surface: #F8FAFC;
+    --color-surface-hover: #F1F5F9;
+    --color-surface-active: #E2E8F0;
+    --color-border: #E2E8F0;
+    --color-border-strong: #CBD5E1;
+    --color-border-subtle: #F1F5F9;
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #475569;
+    --color-text-tertiary: #94A3B8;
+    --color-text-muted: #CBD5E1;
+    --color-text-inverse: #FFFFFF;
+    
+    --color-brand-primary: #E04418;
+    --color-brand-primary-hover: #F25224;
+    --color-brand-primary-active: #C7380F;
+    --color-brand-accent: #06B6D4;
+    
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-error: #EF4444;
+    --color-info: #3B82F6;
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 0.75rem;
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.25rem;
+  }
+
+  /* Dark mode tokens */
+  .dark {
+    --color-background: #09090B;
+    --color-surface: #121215;
+    --color-surface-hover: #18181C;
+    --color-surface-active: #222530;
+    --color-border: #27272A;
+    --color-border-strong: #3F3F46;
+    --color-border-subtle: #1F1F23;
+    --color-text-primary: #FAFAFA;
+    --color-text-secondary: #A1A1AA;
+    --color-text-tertiary: #71717A;
+    --color-text-muted: #52525B;
+    --color-text-inverse: #09090B;
+    
+    --color-brand-primary: #E04418;
+    --color-brand-primary-hover: #F25224;
+    --color-brand-primary-active: #C7380F;
+    --color-brand-accent: #06B6D4;
+    
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-error: #EF4444;
+    --color-info: #3B82F6;
+    
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+    
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 0.75rem;
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.25rem;
   }
 
   body {
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
-    background-color: var(--paperclip-bg);
-    color: var(--paperclip-text-secondary);
+    background-color: var(--color-background);
+    color: var(--color-text-secondary);
   }
 }
+
+/* ============================================================================
+ * Formative Design System - Custom Scrollbar
+ * ============================================================================ */
+
+/* Custom Scrollbar - Modern Style */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(155, 155, 160, 0.3);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 155, 160, 0.6);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.4);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.7);
+}
+
+/* ============================================================================
+ * Formative Design System - React Flow Integration
+ * ============================================================================ */
 
 /* Strictly Suppress React Flow Attribution Watermark */
 .react-flow__attribution {
@@ -36,157 +148,301 @@
   pointer-events: none !important;
 }
 
-/* Custom Scrollbar - Paperclip Native Style */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(113, 113, 122, 0.3);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(113, 113, 122, 0.6);
-}
-
-/* ─── Themes ─────────────────────────────────────────────── */
-
-/* 1. Paperclip Dark Theme (Pitch Black / Deep Obsidian) */
-.theme-dark {
-  --paperclip-bg: #09090b;
-  --paperclip-sidebar-bg: #09090b;
-  --paperclip-card-bg: #121215;
-  --paperclip-border: #27272a;
-  --paperclip-border-subtle: #1f1f23;
-  --paperclip-text-primary: #fafafa;
-  --paperclip-text-secondary: #a1a1aa;
-  --paperclip-text-muted: #71717a;
-  --paperclip-hover: #18181b;
-  background-color: #09090b;
-  color: #a1a1aa;
-}
-
-/* 2. Paperclip Light Theme (Clean Minimal Paper) */
-.theme-light {
-  --paperclip-bg: #ffffff;
-  --paperclip-sidebar-bg: #fafafa;
-  --paperclip-card-bg: #ffffff;
-  --paperclip-border: #e4e4e7;
-  --paperclip-border-subtle: #f4f4f5;
-  --paperclip-text-primary: #09090b;
-  --paperclip-text-secondary: #52525b;
-  --paperclip-text-muted: #71717a;
-  --paperclip-hover: #f4f4f5;
-  background-color: #ffffff;
-  color: #09090b;
-}
-
-/* ─── Node Card Adaptive Theming (Light & Dark) ─────────── */
-.theme-light .paperclip-node-card {
-  background-color: #ffffff !important;
-  border-color: #e4e4e7 !important;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
-}
-.theme-light .paperclip-node-card:hover {
-  border-color: #a1a1aa !important;
-}
-.theme-light .paperclip-node-card.selected {
-  border-color: #18181b !important;
-  box-shadow: 0 0 0 2px #18181b !important;
-}
-.theme-light .paperclip-node-card .node-title {
-  color: #18181b !important;
-}
-.theme-light .paperclip-node-card .node-subtitle {
-  color: #71717a !important;
-}
-.theme-light .paperclip-node-card .node-tag {
-  background-color: #f4f4f5 !important;
-  border-color: #e4e4e7 !important;
-  color: #3f3f46 !important;
-}
-.theme-light .paperclip-node-card .node-guide-box {
-  background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
-  color: #334155 !important;
-}
-.theme-light .paperclip-node-card .node-status-border {
-  border-color: #ffffff !important;
-}
-
-/* ─── React Flow Canvas Integration ─────────────────────── */
+/* React Flow Canvas - Dark Mode */
 .theme-dark .react-flow__background {
-  background-color: #09090b !important;
-}
-
-.theme-light .react-flow__background {
-  background-color: #ffffff !important;
+  background-color: var(--color-background) !important;
 }
 
 .theme-dark .react-flow__edge-path {
-  stroke: #3f3f46;
+  stroke: var(--color-border-strong);
   stroke-width: 1.5;
-}
-
-.theme-light .react-flow__edge-path {
-  stroke: #d4d4d8;
-  stroke-width: 1.5;
-}
-
-.react-flow__controls {
-  border-radius: 8px !important;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
 }
 
 .theme-dark .react-flow__controls {
-  background-color: #121215 !important;
-  border: 1px solid #27272a !important;
-}
-
-.theme-light .react-flow__controls {
-  background-color: #ffffff !important;
-  border: 1px solid #e4e4e7 !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
 }
 
 .theme-dark .react-flow__controls-button {
-  background-color: #121215 !important;
-  border-bottom: 1px solid #27272a !important;
-  fill: #a1a1aa !important;
-  color: #a1a1aa !important;
-}
-
-.theme-light .react-flow__controls-button {
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #e4e4e7 !important;
-  fill: #52525b !important;
-  color: #52525b !important;
+  background-color: var(--color-surface) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  fill: var(--color-text-secondary) !important;
+  color: var(--color-text-secondary) !important;
 }
 
 .theme-dark .react-flow__controls-button:hover {
-  background-color: #1f1f23 !important;
-  fill: #ffffff !important;
+  background-color: var(--color-surface-hover) !important;
+  fill: var(--color-text-primary) !important;
 }
 
-.theme-light .react-flow__controls-button:hover {
-  background-color: #f4f4f5 !important;
-  fill: #000000 !important;
-}
-
-/* MiniMap Styling */
 .theme-dark .react-flow__minimap {
-  background-color: #121215 !important;
-  border: 1px solid #27272a !important;
-  border-radius: 8px !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 0.5rem !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
+/* React Flow Canvas - Light Mode */
+.theme-light .react-flow__background {
+  background-color: var(--color-background) !important;
+}
+
+.theme-light .react-flow__edge-path {
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+}
+
+.theme-light .react-flow__controls {
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+.theme-light .react-flow__controls-button {
+  background-color: var(--color-surface) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  fill: var(--color-text-secondary) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+.theme-light .react-flow__controls-button:hover {
+  background-color: var(--color-surface-hover) !important;
+  fill: var(--color-text-primary) !important;
+}
+
 .theme-light .react-flow__minimap {
-  background-color: #f4f4f5 !important;
-  border: 1px solid #e4e4e7 !important;
-  border-radius: 8px !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 0.5rem !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ============================================================================
+ * Formative Design System - Node Card Styling
+ * ============================================================================ */
+
+/* Node Card - Dark Mode */
+.theme-dark .paperclip-node-card {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.theme-dark .paperclip-node-card:hover {
+  border-color: var(--color-border-strong) !important;
+}
+
+.theme-dark .paperclip-node-card.selected {
+  border-color: var(--color-brand-primary) !important;
+  box-shadow: 0 0 0 3px rgba(224, 68, 24, 0.3) !important;
+}
+
+.theme-dark .paperclip-node-card .node-title {
+  color: var(--color-text-primary) !important;
+}
+
+.theme-dark .paperclip-node-card .node-subtitle {
+  color: var(--color-text-tertiary) !important;
+}
+
+.theme-dark .paperclip-node-card .node-tag {
+  background-color: var(--color-surface-hover) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-muted) !important;
+}
+
+.theme-dark .paperclip-node-card .node-status-border {
+  border-color: var(--color-text-primary) !important;
+}
+
+/* Node Card - Light Mode */
+.theme-light .paperclip-node-card {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.theme-light .paperclip-node-card:hover {
+  border-color: var(--color-border-strong) !important;
+}
+
+.theme-light .paperclip-node-card.selected {
+  border-color: var(--color-brand-primary) !important;
+  box-shadow: 0 0 0 3px rgba(224, 68, 24, 0.3) !important;
+}
+
+.theme-light .paperclip-node-card .node-title {
+  color: var(--color-text-primary) !important;
+}
+
+.theme-light .paperclip-node-card .node-subtitle {
+  color: var(--color-text-tertiary) !important;
+}
+
+.theme-light .paperclip-node-card .node-tag {
+  background-color: var(--color-surface-hover) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-muted) !important;
+}
+
+.theme-light .paperclip-node-card .node-status-border {
+  border-color: var(--color-text-primary) !important;
+}
+
+/* ============================================================================
+ * Formative Design System - Utility Classes
+ * ============================================================================ */
+
+/* Text utility classes */
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}
+
+/* Background utility classes */
+.bg-surface {
+  background-color: var(--color-surface);
+}
+
+.bg-surface-hover {
+  background-color: var(--color-surface-hover);
+}
+
+.bg-surface-active {
+  background-color: var(--color-surface-active);
+}
+
+/* Border utility classes */
+.border-subtle {
+  border-color: var(--color-border-subtle);
+}
+
+.border-default {
+  border-color: var(--color-border);
+}
+
+.border-strong {
+  border-color: var(--color-border-strong);
+}
+
+/* ============================================================================
+ * Formative Design System - Animations
+ * ============================================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 200ms ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 200ms ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================================================
+ * Formative Design System - Focus Styles
+ * ============================================================================ */
+
+/* Focus visible styles for accessibility */
+:focus-visible {
+  outline: none;
+}
+
+:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-brand-primary), 0 0 0 4px rgba(224, 68, 24, 0.3);
+}
+
+/* Remove focus outline for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================================================
+ * Formative Design System - Selection Styles
+ * ============================================================================ */
+
+/* Custom selection styling */
+::selection {
+  background-color: rgba(224, 68, 24, 0.3);
+  color: var(--color-text-inverse);
+}
+
+/* Disable text selection on UI elements */
+.select-none {
+  user-select: none;
+}
+
+/* ============================================================================
+ * Formative Design System - Print Styles
+ * ============================================================================ */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+    color: black;
+  }
+  
+  .react-flow {
+    display: block !important;
+  }
 }

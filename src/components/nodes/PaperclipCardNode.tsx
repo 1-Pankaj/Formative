@@ -1,3 +1,9 @@
+/**
+ * Formative Studio - Redesigned Paperclip Card Node
+ * 
+ * A modern, clean node card component with proper design system integration.
+ */
+
 import React, { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { 
@@ -15,9 +21,14 @@ import {
   FileText,
   HelpCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ExternalLink
 } from 'lucide-react';
 import { ArchNodeData, NodeCategory } from '../../types';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { cn, capitalize, truncate } from '../../lib/utils';
+import { colors } from '../../lib/design-tokens';
 
 interface PaperclipCardNodeProps {
   id: string;
@@ -25,6 +36,7 @@ interface PaperclipCardNodeProps {
   selected?: boolean;
 }
 
+// Category configuration with design system colors
 const CATEGORY_CONFIG: Record<NodeCategory, {
   icon: React.ElementType;
   bgTint: string;
@@ -111,114 +123,163 @@ const CATEGORY_CONFIG: Record<NodeCategory, {
   }
 };
 
+// Status colors
+const STATUS_COLORS: Record<string, { dot: string; bg: string; text: string }> = {
+  running: { dot: '#F59E0B', bg: 'rgba(245, 158, 11, 0.2)', text: '#F59E0B' },
+  done: { dot: '#10B981', bg: 'rgba(16, 185, 129, 0.2)', text: '#10B981' },
+  error: { dot: '#EF4444', bg: 'rgba(239, 68, 68, 0.2)', text: '#EF4444' },
+  idle: { dot: '#94A3B8', bg: 'rgba(148, 163, 184, 0.2)', text: '#94A3B8' },
+  blocked: { dot: '#F97316', bg: 'rgba(249, 115, 22, 0.2)', text: '#F97316' },
+};
+
 export const PaperclipCardNode: React.FC<PaperclipCardNodeProps> = ({ id, data, selected }) => {
   const [showHelp, setShowHelp] = useState(false);
   const cfg = CATEGORY_CONFIG[data.category] || CATEGORY_CONFIG.backend;
   const Icon = cfg.icon;
-
-  const statusDot = data.status === 'running' 
-    ? '#eab308' 
-    : data.status === 'done' 
-    ? '#10b981' 
-    : data.status === 'error' 
-    ? '#ef4444' 
-    : cfg.dotColor;
+  
+  // Get status colors
+  const statusInfo = STATUS_COLORS[data.status || 'idle'] || STATUS_COLORS.idle;
 
   return (
     <div
-      className={`paperclip-node-card group relative w-[270px] rounded-xl transition-all duration-150 select-none shadow-md ${
+      className={cn(
+        `paperclip-node-card group relative w-[270px] rounded-xl transition-all duration-150 select-none`,
         selected
-          ? 'selected ring-2 ring-white border-white bg-[#18181c]'
-          : 'border border-[#27272a] hover:border-[#3f3f46] bg-[#121215]'
-      }`}
+          ? 'selected ring-2 ring-brand-primary border-brand-primary bg-surface-active' 
+          : 'border border-border hover:border-border-strong bg-surface'
+      )}
     >
       {/* Input Handle */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-[#09090b] hover:!bg-white hover:!scale-125 transition-all"
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-background hover:!bg-brand-primary hover:!scale-125 transition-all"
       />
 
-      <div className="p-3.5 space-y-2.5">
-        {/* Top Row: Avatar + Title & Role */}
+      <div className="p-3 space-y-2">
+        {/* Top Row: Avatar + Title & Status */}
         <div className="flex items-start gap-3">
-          {/* Avatar Icon with Status Dot (Paperclip signature) */}
+          {/* Avatar Icon with Status Dot */}
           <div className="relative shrink-0">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${cfg.bgTint}`}>
+            <div className={cn(`w-9 h-9 rounded-full flex items-center justify-center border ${cfg.bgTint}`)}>
               <Icon className="w-4 h-4" />
             </div>
             {/* Live status dot */}
-            <span
-              className="node-status-border absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#121215]"
-              style={{ backgroundColor: statusDot }}
-              title={`Status: ${data.status || 'idle'}`}
+            <div
+              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-surface"
+              style={{ backgroundColor: statusInfo.dot }}
             />
           </div>
 
-          {/* Name & Subtitle */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-1">
-              <h4 className="node-title text-sm font-semibold text-[#fafafa] leading-tight truncate">
-                {data.label}
+          {/* Title and Subtitle */}
+          <div className="min-w-0 flex-1">
+            <div className="space-y-0.5">
+              <h4 className="node-title text-sm font-semibold truncate">
+                {data.label || 'Untitled'}
               </h4>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowHelp(!showHelp);
-                }}
-                className="text-zinc-500 hover:text-white transition-colors p-0.5"
-                title="What does this component do?"
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-              </button>
+              {data.subtitle && (
+                <p className="node-subtitle text-[11px] truncate">
+                  {truncate(data.subtitle, 40)}
+                </p>
+              )}
             </div>
-
-            <p className="node-subtitle text-xs text-[#a1a1aa] mt-0.5 leading-tight truncate">
-              {data.subtitle || data.category}
-            </p>
-
-            {/* Model / Adapter Badge */}
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border uppercase font-medium ${cfg.tagColor}`}>
-                {data.category}
+            
+            {/* AI Live Badge */}
+            {data.isAiLive && (
+              <span className="absolute top-0 right-0 text-[10px] font-mono bg-brand-primary/10 text-brand-primary px-1.5 py-0.5 rounded-bl-lg rounded-tr-lg border border-brand-primary/20">
+                LIVE
               </span>
-              {data.tags && data.tags.slice(0, 2).map((t: string) => (
-                <span
-                  key={t}
-                  className="node-tag text-[10px] font-mono text-[#a1a1aa] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-700/60"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Beginner Explainer Drawer */}
-        {showHelp && (
-          <div className="node-guide-box p-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 space-y-1.5 animate-in fade-in duration-150">
-            <div className="font-semibold text-white flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-400">
-              <span>Architect's Guide</span>
+        {/* Description */}
+        {data.description && !showHelp && (
+          <p className="text-[11px] text-muted line-clamp-2">
+            {truncate(data.description, 80)}
+          </p>
+        )}
+
+        {/* Help/Role Description Toggle */}
+        {showHelp ? (
+          <div className="text-[11px] text-muted node-guide-box p-2 rounded-md bg-surface-hover border border-border-subtle">
+            {cfg.roleDescription}
+          </div>
+        ) : (
+          (data.tags || []).length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {(data.tags as string[]).slice(0, 3).map((tag, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    'node-tag px-1.5 py-0.2 rounded border text-[10px] font-mono',
+                    cfg.tagColor
+                  )}
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
-            <p className="text-[11px] leading-relaxed text-zinc-300">
-              {cfg.roleDescription}
-            </p>
-            {data.description && (
-              <p className="text-[11px] text-zinc-400 border-t border-zinc-800/80 pt-1 leading-relaxed">
-                {data.description}
-              </p>
+          )
+        )}
+
+        {/* Bottom Row: Status + Actions */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
+            {/* Step Index */}
+            {data.stepIndex && (
+              <span className="text-[10px] font-mono text-muted">
+                #{data.stepIndex}
+              </span>
+            )}
+            
+            {/* Model Adapter */}
+            {data.modelAdapter && (
+              <span className="text-[10px] font-mono text-muted">
+                {data.modelAdapter}
+              </span>
             )}
           </div>
-        )}
+
+          <div className="flex items-center gap-1">
+            {/* Help Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              theme="dark"
+              onClick={() => setShowHelp(!showHelp)}
+              className="h-5 w-5 p-0"
+            >
+              {showHelp ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <HelpCircle className="w-3 h-3" />
+              )}
+            </Button>
+
+            {/* External Link for AI Steps */}
+            {data.modelAdapter && (
+              <Button
+                variant="ghost"
+                size="icon"
+                theme="dark"
+                className="h-5 w-5 p-0"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Output Handle */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-[#09090b] hover:!bg-white hover:!scale-125 transition-all"
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-background hover:!bg-brand-primary hover:!scale-125 transition-all"
       />
     </div>
   );
 };
+
+export default PaperclipCardNode;

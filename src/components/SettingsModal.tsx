@@ -1,17 +1,27 @@
-import React, { useState } from 'react';
+/**
+ * Formative Studio - Redesigned Settings Modal
+ * 
+ * A modern settings dialog with proper design system integration.
+ */
+
+import React, { useState, useEffect } from 'react';
 import { 
-  X, 
   Settings, 
-  Cpu, 
-  HardDrive, 
+  Moon, 
+  Sun, 
   Palette, 
-  Shield, 
-  Check, 
-  RotateCcw,
-  Sparkles,
-  Bot
+  FolderOpen, 
+  FileText, 
+  Clock, 
+  Bell, 
+  HelpCircle
 } from 'lucide-react';
 import { ThemeMode } from '../types';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
+import { cn } from '../lib/utils';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,253 +36,330 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   theme,
   onToggleTheme,
 }) => {
-  const [activeTab, setActiveTab] = useState<'agent' | 'memory' | 'appearance'>('agent');
-  const [claudePath, setClaudePath] = useState('~/.claude/transcripts');
-  const [antigravityPath, setAntigravityPath] = useState('~/.gemini/antigravity/brain');
-  const [memoryWindow, setMemoryWindow] = useState('20');
-  const [autoSaveInterval, setAutoSaveInterval] = useState('30');
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const isDark = theme === 'dark';
+  const [activeTab, setActiveTab] = useState<'general' | 'paths' | 'appearance' | 'about'>('general');
+  
+  // Load saved settings from localStorage
+  const [claudePath, setClaudePath] = useState(() => {
+    return localStorage.getItem('formative_claude_path') || '';
+  });
+  
+  const [antigravityPath, setAntigravityPath] = useState(() => {
+    return localStorage.getItem('formative_antigravity_path') || '';
+  });
+  
+  const [memoryWindow, setMemoryWindow] = useState(() => {
+    return localStorage.getItem('formative_memory_window') || '50';
+  });
+  
+  const [autoSaveInterval, setAutoSaveInterval] = useState(() => {
+    return localStorage.getItem('formative_autosave_sec') || '30';
+  });
 
-  if (!isOpen) return null;
-
-  const isDark = theme !== 'light';
-
-  const handleSave = () => {
+  // Save settings to localStorage
+  useEffect(() => {
     localStorage.setItem('formative_claude_path', claudePath);
     localStorage.setItem('formative_antigravity_path', antigravityPath);
     localStorage.setItem('formative_memory_window', memoryWindow);
     localStorage.setItem('formative_autosave_sec', autoSaveInterval);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      onClose();
-    }, 800);
-  };
+  }, [claudePath, antigravityPath, memoryWindow, autoSaveInterval]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className={`w-full max-w-2xl border rounded-xl shadow-2xl overflow-hidden flex flex-col ${
-        isDark ? 'bg-[#09090b] border-[#27272a] text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
-      }`}>
-        {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${
-          isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              isDark ? 'bg-zinc-800 text-white' : 'bg-zinc-200 text-black'
-            }`}>
-              <Settings className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold tracking-tight">
-                Studio Preferences & Agent Memory
-              </h3>
-              <p className="text-xs text-zinc-400">
-                Configure local agent paths, observation memory limits, and layout
-              </p>
-            </div>
-          </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent theme={theme} size="lg" onClose={onClose}>
+        <DialogHeader theme={theme}>
+          <DialogTitle theme={theme} className="flex items-center gap-2">
+            <Settings className="w-5 h-5 text-brand-primary" />
+            <span>Studio Preferences</span>
+          </DialogTitle>
+          <DialogDescription theme={theme}>
+            Configure Formative Studio settings and preferences
+          </DialogDescription>
+        </DialogHeader>
 
-          <button
-            onClick={onClose}
-            className={`p-1.5 rounded-lg transition-colors ${
-              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-black hover:bg-zinc-200'
-            }`}
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Tabs */}
+        <div
+          className={cn(
+            'flex border-b mb-4',
+            isDark ? 'border-dark-border' : 'border-light-border'
+          )}
+        >
+          {[
+            { id: 'general', label: 'General' },
+            { id: 'paths', label: 'Paths' },
+            { id: 'appearance', label: 'Appearance' },
+            { id: 'about', label: 'About' },
+          ].map((tab) => (
+            <Button
+              key={tab.id}
+              variant="ghost"
+              size="sm"
+              theme={theme}
+              onClick={() => setActiveTab(tab.id as 'general' | 'paths' | 'appearance' | 'about')}
+              className={cn(
+                'rounded-none',
+                activeTab === tab.id 
+                  ? 'border-b-2 border-brand-primary text-brand-primary' 
+                  : ''
+              )}
+            >
+              {tab.label}
+            </Button>
+          ))}
         </div>
 
-        {/* Tab Bar */}
-        <div className={`flex border-b px-6 text-xs font-medium gap-2 pt-2 ${
-          isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-        }`}>
-          <button
-            onClick={() => setActiveTab('agent')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
-              activeTab === 'agent'
-                ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            <span>AI Agent Connections</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('memory')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
-              activeTab === 'memory'
-                ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <HardDrive className="w-3.5 h-3.5" />
-            <span>Memory & Context</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('appearance')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
-              activeTab === 'appearance'
-                ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Palette className="w-3.5 h-3.5" />
-            <span>Appearance & Theme</span>
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-5 min-h-[300px]">
-          {activeTab === 'agent' && (
+        {/* Tab Content */}
+        <div className="space-y-4">
+          {/* General Tab */}
+          {activeTab === 'general' && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Claude Code Transcript Directory
-                </label>
-                <input
-                  type="text"
-                  value={claudePath}
-                  onChange={(e) => setClaudePath(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border text-xs font-mono focus:outline-none ${
-                    isDark ? 'bg-[#121215] border-[#27272a] text-zinc-200 focus:border-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-black'
-                  }`}
-                />
-                <p className="text-[11px] text-zinc-500">
-                  Formative monitors JSON lines in this directory for live coding tool executions with 0 API tokens consumed.
-                </p>
-              </div>
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>Auto-Save</span>
+                  </CardTitle>
+                  <CardDescription theme={theme}>
+                    Configure automatic saving of your work
+                  </CardDescription>
+                </CardHeader>
+                <CardContent theme={theme}>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Auto-save Interval (seconds)
+                    </label>
+                    <Input
+                      theme={theme}
+                      type="number"
+                      value={autoSaveInterval}
+                      onChange={(e) => setAutoSaveInterval(e.target.value)}
+                      className="w-32"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Google Antigravity Brain Directory
-                </label>
-                <input
-                  type="text"
-                  value={antigravityPath}
-                  onChange={(e) => setAntigravityPath(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border text-xs font-mono focus:outline-none ${
-                    isDark ? 'bg-[#121215] border-[#27272a] text-zinc-200 focus:border-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-black'
-                  }`}
-                />
-                <p className="text-[11px] text-zinc-500">
-                  Antigravity transcript root for live tool verification and subagent traces.
-                </p>
-              </div>
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    <span>Notifications</span>
+                  </CardTitle>
+                  <CardDescription theme={theme}>
+                    Configure notification preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent theme={theme}>
+                  <p className="text-sm text-muted">
+                    Notification settings coming soon...
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           )}
 
-          {activeTab === 'memory' && (
+          {/* Paths Tab */}
+          {activeTab === 'paths' && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Step History Window (Nodes)
-                </label>
-                <input
-                  type="number"
-                  value={memoryWindow}
-                  onChange={(e) => setMemoryWindow(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border text-xs font-mono focus:outline-none ${
-                    isDark ? 'bg-[#121215] border-[#27272a] text-zinc-200 focus:border-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-black'
-                  }`}
-                />
-                <p className="text-[11px] text-zinc-500">
-                  Maximum number of recent agent reasoning steps to map onto the live canvas without cluttering view.
-                </p>
-              </div>
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <FolderOpen className="w-4 h-4" />
+                    <span>AI Agent Paths</span>
+                  </CardTitle>
+                  <CardDescription theme={theme}>
+                    Configure paths to AI agent session directories
+                  </CardDescription>
+                </CardHeader>
+                <CardContent theme={theme} className="space-y-4">
+                  {/* Claude Code Path */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <span>Claude Code</span>
+                      <span className="text-xs text-muted">~/.claude/projects/</span>
+                    </label>
+                    <Input
+                      theme={theme}
+                      placeholder="/path/to/claude/projects"
+                      value={claudePath}
+                      onChange={(e) => setClaudePath(e.target.value)}
+                    />
+                  </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Auto-Save Interval (Seconds)
-                </label>
-                <input
-                  type="number"
-                  value={autoSaveInterval}
-                  onChange={(e) => setAutoSaveInterval(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border text-xs font-mono focus:outline-none ${
-                    isDark ? 'bg-[#121215] border-[#27272a] text-zinc-200 focus:border-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900 focus:border-black'
-                  }`}
-                />
-              </div>
+                  {/* Antigravity Path */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <span>Antigravity</span>
+                      <span className="text-xs text-muted">~/.gemini/antigravity/brain/</span>
+                    </label>
+                    <Input
+                      theme={theme}
+                      placeholder="/path/to/antigravity/brain"
+                      value={antigravityPath}
+                      onChange={(e) => setAntigravityPath(e.target.value)}
+                    />
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    theme={theme}
+                    onClick={() => {
+                      // Reset to defaults
+                      setClaudePath('');
+                      setAntigravityPath('');
+                    }}
+                  >
+                    Reset to Defaults
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span>Memory Window</span>
+                  </CardTitle>
+                  <CardDescription theme={theme}>
+                    Number of recent agent steps to keep in memory
+                  </CardDescription>
+                </CardHeader>
+                <CardContent theme={theme}>
+                  <div className="space-y-2">
+                    <Input
+                      theme={theme}
+                      type="number"
+                      value={memoryWindow}
+                      onChange={(e) => setMemoryWindow(e.target.value)}
+                      className="w-32"
+                    />
+                    <p className="text-xs text-muted">
+                      Higher values use more memory but provide better context
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
+          {/* Appearance Tab */}
           {activeTab === 'appearance' && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-                  Interface Theme
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => {
-                      if (theme !== 'dark') onToggleTheme();
-                    }}
-                    className={`p-3.5 rounded-xl border text-left transition-all ${
-                      theme === 'dark'
-                        ? 'border-white bg-[#18181c] text-white ring-1 ring-white/50'
-                        : 'border-[#27272a] bg-[#121215] text-zinc-400'
-                    }`}
-                  >
-                    <div className="text-sm font-semibold">Pitch Black (Paperclip)</div>
-                    <div className="text-xs text-zinc-500 mt-1">Deep high-contrast studio mode</div>
-                  </button>
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <Palette className="w-4 h-4" />
+                    <span>Theme</span>
+                  </CardTitle>
+                  <CardDescription theme={theme}>
+                    Choose your preferred color scheme
+                  </CardDescription>
+                </CardHeader>
+                <CardContent theme={theme}>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={theme === 'dark' ? 'primary' : 'outline'}
+                      size="sm"
+                      theme={theme}
+                      onClick={onToggleTheme}
+                      className="flex-1 flex items-center gap-2"
+                    >
+                      <Moon className="w-4 h-4" />
+                      <span>Dark Mode</span>
+                    </Button>
+                    <Button
+                      variant={theme === 'light' ? 'primary' : 'outline'}
+                      size="sm"
+                      theme={theme}
+                      onClick={onToggleTheme}
+                      className="flex-1 flex items-center gap-2"
+                    >
+                      <Sun className="w-4 h-4" />
+                      <span>Light Mode</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
 
-                  <button
-                    onClick={() => {
-                      if (theme !== 'light') onToggleTheme();
-                    }}
-                    className={`p-3.5 rounded-xl border text-left transition-all ${
-                      theme === 'light'
-                        ? 'border-black bg-zinc-100 text-black ring-1 ring-black/50'
-                        : 'border-zinc-200 bg-zinc-50 text-zinc-600'
-                    }`}
-                  >
-                    <div className="text-sm font-semibold">Clean Minimal (Light)</div>
-                    <div className="text-xs text-zinc-400 mt-1">Daytime studio mode with crisp borders</div>
-                  </button>
-                </div>
-              </div>
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    <span>UI Preferences</span>
+                  </CardTitle>
+                  <CardDescription theme={theme}>
+                    Customize the user interface
+                  </CardDescription>
+                </CardHeader>
+                <CardContent theme={theme}>
+                  <p className="text-sm text-muted">
+                    More UI customization options coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* About Tab */}
+          {activeTab === 'about' && (
+            <div className="space-y-4">
+              <Card variant="bordered" theme={theme}>
+                <CardHeader theme={theme}>
+                  <CardTitle theme={theme} className="flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4" />
+                    <span>About Formative Studio</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent theme={theme} className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">
+                      Formative Studio
+                    </h3>
+                    <p className="text-sm text-muted">
+                      Desktop Software Architecture & Single-Agent Orchestration Canvas
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted mb-1">Version</p>
+                      <p>1.0.0</p>
+                    </div>
+                    <div>
+                      <p className="text-muted mb-1">License</p>
+                      <p>MIT</p>
+                    </div>
+                    <div>
+                      <p className="text-muted mb-1">Built With</p>
+                      <p>React 19, TypeScript, Electron</p>
+                    </div>
+                    <div>
+                      <p className="text-muted mb-1">Author</p>
+                      <p>Formative Open Source</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <p className="text-xs text-muted">
+                      Formative Studio is an open-source visual architecture tool that bridges
+                      software architecture blueprints with live AI agent execution.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className={`px-6 py-4 border-t flex items-center justify-between ${
-          isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-        }`}>
-          <span className="text-xs text-zinc-500">
-            {saveSuccess ? (
-              <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5" />
-                <span>Preferences Saved</span>
-              </span>
-            ) : (
-              'Preferences persisted to local storage'
-            )}
-          </span>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold ${
-                isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
-              }`}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-5 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all"
-            >
-              Save Preferences
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+        <DialogFooter theme={theme}>
+          <Button variant="outline" size="sm" theme={theme} onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
+
+export default SettingsModal;

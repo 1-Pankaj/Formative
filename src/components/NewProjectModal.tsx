@@ -1,441 +1,265 @@
-import React, { useState, useEffect } from 'react';
-import { X, Globe, Bot, FileCode, Plus, Layers, Database, Server, Smartphone, Share2, Cpu, Workflow } from 'lucide-react';
-import { Project, ProjectType, ThemeMode } from '../types';
-import formativeLogo from '../assets/FormativeLogo.png';
+/**
+ * Formative Studio - Redesigned New Project Modal
+ * 
+ * A modern new project creation dialog with proper design system integration.
+ */
+
+import React, { useState } from 'react';
+import { Plus, Layers, FolderOpen, Code, Bot, Database, Network, Cpu, Zap } from 'lucide-react';
+import { Project, ThemeMode, ProjectType } from '../types';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Card, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { cn } from '../lib/utils';
 
 interface NewProjectModalProps {
+  theme: ThemeMode;
   isOpen: boolean;
   onClose: () => void;
   onCreateProject: (project: Project) => void;
-  theme: ThemeMode;
 }
 
-const templates: Array<{
-  type: ProjectType;
-  title: string;
-  desc: string;
+// Project type options
+const projectTypes: Array<{
+  id: ProjectType;
+  label: string;
+  description: string;
   icon: React.ElementType;
-  nodes: any[];
-  edges: any[];
 }> = [
   {
-    type: 'web',
-    title: 'Full-Stack Web Platform',
-    desc: 'React / Next.js client, API Gateway, PostgreSQL relational database, and Redis cache.',
-    icon: Globe,
-    nodes: [
-      {
-        id: 'web-1',
-        type: 'paperclipCard',
-        position: { x: 80, y: 140 },
-        data: { label: 'Web Client App', category: 'frontend', subtitle: 'src/app (Next.js)', status: 'done', tags: ['React', 'TS'] },
-      },
-      {
-        id: 'web-2',
-        type: 'paperclipCard',
-        position: { x: 400, y: 140 },
-        data: { label: 'API Gateway & Auth', category: 'gateway', subtitle: 'src/api (Fastify)', status: 'running', tags: ['REST', 'JWT'] },
-      },
-      {
-        id: 'web-3',
-        type: 'paperclipCard',
-        position: { x: 720, y: 80 },
-        data: { label: 'PostgreSQL Database', category: 'database', subtitle: 'Prisma ORM', status: 'done', tags: ['Postgres', 'ACID'] },
-      },
-      {
-        id: 'web-4',
-        type: 'paperclipCard',
-        position: { x: 720, y: 220 },
-        data: { label: 'Redis Session Cache', category: 'database', subtitle: 'In-Memory Store', status: 'done', tags: ['Redis', 'KV'] },
-      },
-    ],
-    edges: [
-      { id: 'ew1', source: 'web-1', target: 'web-2', animated: true },
-      { id: 'ew2', source: 'web-2', target: 'web-3', animated: true },
-      { id: 'ew3', source: 'web-2', target: 'web-4', animated: true },
-    ],
+    id: 'web',
+    label: 'Web Application',
+    description: 'Full-stack web applications with frontend and backend',
+    icon: Network,
   },
   {
-    type: 'ai-system',
-    title: 'AI Agent Autonomous Workflow',
-    desc: 'User prompt intake pipeline, Graphify AST analysis, local tool execution, and verification.',
-    icon: Bot,
-    nodes: [
-      {
-        id: 'ai-1',
-        type: 'paperclipCard',
-        position: { x: 80, y: 140 },
-        data: { label: 'User Goal Intake', category: 'ai-agent', subtitle: 'Prompt Context', status: 'done', tags: ['Context'] },
-      },
-      {
-        id: 'ai-2',
-        type: 'paperclipCard',
-        position: { x: 380, y: 140 },
-        data: { label: 'Knowledge Graph Map', category: 'backend', subtitle: 'Graphify Index', status: 'done', tags: ['Graphify'] },
-      },
-      {
-        id: 'ai-3',
-        type: 'paperclipCard',
-        position: { x: 680, y: 80 },
-        data: { label: 'Agent Tool Execution', category: 'worker', subtitle: 'Local Process', status: 'running', tags: ['Tools'] },
-      },
-      {
-        id: 'ai-4',
-        type: 'paperclipCard',
-        position: { x: 680, y: 220 },
-        data: { label: 'Verification Critic', category: 'ai-agent', subtitle: 'Self-Review Loop', status: 'done', tags: ['Validation'] },
-      },
-    ],
-    edges: [
-      { id: 'ea1', source: 'ai-1', target: 'ai-2', animated: true },
-      { id: 'ea2', source: 'ai-2', target: 'ai-3', animated: true },
-      { id: 'ea3', source: 'ai-3', target: 'ai-4', animated: true },
-    ],
+    id: 'mobile',
+    label: 'Mobile Application',
+    description: 'Cross-platform mobile apps with React Native',
+    icon: Code,
   },
   {
-    type: 'backend',
-    title: 'Microservices & Event-Driven Cloud',
-    desc: 'Edge CDN gateway, decoupled Auth & Order microservices, Kafka event bus, and persistent storage.',
+    id: 'backend',
+    label: 'Backend Service',
+    description: 'Microservices, APIs, and server-side applications',
     icon: Server,
-    nodes: [
-      {
-        id: 'ms-1',
-        type: 'paperclipCard',
-        position: { x: 80, y: 140 },
-        data: { label: 'Cloudflare Edge CDN', category: 'gateway', subtitle: 'Global Edge Router', status: 'done', tags: ['Edge', 'WAF'] },
-      },
-      {
-        id: 'ms-2',
-        type: 'paperclipCard',
-        position: { x: 380, y: 80 },
-        data: { label: 'Auth & Identity Service', category: 'backend', subtitle: 'Go Microservice', status: 'done', tags: ['Auth', 'OAuth2'] },
-      },
-      {
-        id: 'ms-3',
-        type: 'paperclipCard',
-        position: { x: 380, y: 220 },
-        data: { label: 'Order Processing Service', category: 'backend', subtitle: 'Rust Worker', status: 'running', tags: ['Orders', 'gRPC'] },
-      },
-      {
-        id: 'ms-4',
-        type: 'paperclipCard',
-        position: { x: 680, y: 140 },
-        data: { label: 'Apache Kafka Event Bus', category: 'queue', subtitle: 'Distributed Queue', status: 'done', tags: ['Kafka', 'Events'] },
-      },
-    ],
-    edges: [
-      { id: 'ems1', source: 'ms-1', target: 'ms-2', animated: true },
-      { id: 'ems2', source: 'ms-1', target: 'ms-3', animated: true },
-      { id: 'ems3', source: 'ms-3', target: 'ms-4', animated: true },
-    ],
   },
   {
-    type: 'mobile',
-    title: 'Mobile & Cross-Platform Engine',
-    desc: 'iOS and Android client app, GraphQL Gateway, Serverless Lambda workers, and cloud database.',
-    icon: Smartphone,
-    nodes: [
-      {
-        id: 'mob-1',
-        type: 'paperclipCard',
-        position: { x: 80, y: 140 },
-        data: { label: 'Mobile Native App', category: 'frontend', subtitle: 'React Native / Expo', status: 'done', tags: ['iOS', 'Android'] },
-      },
-      {
-        id: 'mob-2',
-        type: 'paperclipCard',
-        position: { x: 400, y: 140 },
-        data: { label: 'GraphQL Federation Gateway', category: 'gateway', subtitle: 'Apollo Router', status: 'running', tags: ['GraphQL', 'Schema'] },
-      },
-      {
-        id: 'mob-3',
-        type: 'paperclipCard',
-        position: { x: 700, y: 140 },
-        data: { label: 'Serverless Worker Fleet', category: 'worker', subtitle: 'AWS Lambda Functions', status: 'done', tags: ['Serverless', 'Lambda'] },
-      },
-    ],
-    edges: [
-      { id: 'emob1', source: 'mob-1', target: 'mob-2', animated: true },
-      { id: 'emob2', source: 'mob-2', target: 'mob-3', animated: true },
-    ],
+    id: 'ai-system',
+    label: 'AI System',
+    description: 'AI agents, LLM pipelines, and intelligent systems',
+    icon: Bot,
   },
   {
-    type: 'realtime',
-    title: 'Real-Time Collaborative System',
-    desc: 'Interactive collaborative canvas, WebSocket signaling gateway, CRDT state sync, and Redis Pub/Sub.',
-    icon: Share2,
-    nodes: [
-      {
-        id: 'rt-1',
-        type: 'paperclipCard',
-        position: { x: 80, y: 140 },
-        data: { label: 'Interactive Canvas Client', category: 'frontend', subtitle: 'Web & Desktop App', status: 'done', tags: ['Canvas', 'PixiJS'] },
-      },
-      {
-        id: 'rt-2',
-        type: 'paperclipCard',
-        position: { x: 400, y: 140 },
-        data: { label: 'WebSocket Signaling Gateway', category: 'gateway', subtitle: 'ws-server (Node.js)', status: 'running', tags: ['WSS', 'Realtime'] },
-      },
-      {
-        id: 'rt-3',
-        type: 'paperclipCard',
-        position: { x: 720, y: 140 },
-        data: { label: 'CRDT Sync Engine', category: 'backend', subtitle: 'Yjs / Automerge State', status: 'done', tags: ['CRDT', 'State'] },
-      },
-    ],
-    edges: [
-      { id: 'ert1', source: 'rt-1', target: 'rt-2', animated: true },
-      { id: 'ert2', source: 'rt-2', target: 'rt-3', animated: true },
-    ],
+    id: 'data-pipeline',
+    label: 'Data Pipeline',
+    description: 'ETL, data processing, and analytics pipelines',
+    icon: Database,
   },
   {
-    type: 'data-pipeline',
-    title: 'Data Pipeline & Vector Lakehouse',
-    desc: 'Telemetry ingestion stream, embedding workers, Qdrant / Pinecone vector store, and data warehouse.',
-    icon: Cpu,
-    nodes: [
-      {
-        id: 'dp-1',
-        type: 'paperclipCard',
-        position: { x: 80, y: 140 },
-        data: { label: 'Telemetry Ingestion API', category: 'gateway', subtitle: 'High-Throughput Sink', status: 'done', tags: ['Ingest', 'HTTP'] },
-      },
-      {
-        id: 'dp-2',
-        type: 'paperclipCard',
-        position: { x: 400, y: 140 },
-        data: { label: 'Vector Embedding Worker', category: 'worker', subtitle: 'Text-Embedding Engine', status: 'running', tags: ['Embeddings', 'GPU'] },
-      },
-      {
-        id: 'dp-3',
-        type: 'paperclipCard',
-        position: { x: 720, y: 140 },
-        data: { label: 'Vector Database Store', category: 'database', subtitle: 'Qdrant / Milvus Cluster', status: 'done', tags: ['VectorDB', 'HNSW'] },
-      },
-    ],
-    edges: [
-      { id: 'edp1', source: 'dp-1', target: 'dp-2', animated: true },
-      { id: 'edp2', source: 'dp-2', target: 'dp-3', animated: true },
-    ],
+    id: 'realtime',
+    label: 'Realtime System',
+    description: 'WebSocket, live updates, and collaborative systems',
+    icon: Zap,
   },
   {
-    type: 'general',
-    title: 'Blank Architecture Canvas',
-    desc: 'Clean slate with zero components. Add nodes manually from the component library.',
-    icon: FileCode,
-    nodes: [],
-    edges: [],
+    id: 'general',
+    label: 'General',
+    description: 'Custom architecture with full flexibility',
+    icon: Layers,
   },
 ];
 
 export const NewProjectModal: React.FC<NewProjectModalProps> = ({
+  theme,
   isOpen,
   onClose,
   onCreateProject,
-  theme,
 }) => {
-  const [name, setName] = useState('');
-  const [desc, setDesc] = useState('');
-  const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
+  const isDark = theme === 'dark';
+  const [step, setStep] = useState<'type' | 'details'>('type');
+  const [selectedType, setSelectedType] = useState<ProjectType>('general');
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
 
-  // Hook must always run unconditionally to respect React Rules of Hooks
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  // Handle type selection
+  const handleSelectType = (type: ProjectType) => {
+    setSelectedType(type);
+    setStep('details');
+  };
 
-  if (!isOpen) return null;
+  // Handle back to type selection
+  const handleBack = () => {
+    setStep('type');
+  };
 
-  const isDark = theme !== 'light';
-
+  // Handle project creation
   const handleCreate = () => {
-    const tmpl = templates[selectedTemplateIndex];
-    const newProj: Project = {
+    if (!projectName.trim()) return;
+
+    const newProject: Project = {
       id: `proj-${Date.now()}`,
-      name: name.trim() || tmpl.title,
-      description: desc.trim() || tmpl.desc,
-      type: tmpl.type,
+      name: projectName,
+      description: projectDescription || `Software architecture canvas for ${projectName}`,
+      type: selectedType,
       updatedAt: new Date().toISOString(),
-      nodes: JSON.parse(JSON.stringify(tmpl.nodes)),
-      edges: JSON.parse(JSON.stringify(tmpl.edges)),
-      officeConfig: {
-        activeSkills: [],
-        ceoName: 'Chief Executive Agent'
-      },
-      issues: [
-        {
-          id: `iss-${Date.now()}-1`,
-          key: 'TASK-1',
-          title: `Initial architecture setup for ${name.trim() || tmpl.title}`,
-          status: 'in_progress',
-          assignee: 'Chief Executive Agent',
-          assigneeInitials: 'CEO',
-          projectName: name.trim() || tmpl.title,
-          projectColor: '#3b82f6',
-          isLive: true,
-          date: 'Today',
-          description: 'Map initial services, boundaries, and communication ports for this workspace.'
-        }
-      ]
+      nodes: [],
+      edges: [],
+      issues: [],
     };
-    onCreateProject(newProj);
-    setName('');
-    setDesc('');
+
+    onCreateProject(newProject);
     onClose();
+    
+    // Reset form
+    setProjectName('');
+    setProjectDescription('');
+    setSelectedType('general');
+    setStep('type');
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className={`w-full max-w-xl border rounded-xl shadow-2xl overflow-hidden flex flex-col ${
-        isDark ? 'bg-[#09090b] border-[#27272a] text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
-      }`}>
-        {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${
-          isDark ? 'bg-[#121215] border-[#27272a]' : 'bg-zinc-50 border-zinc-200'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center p-1 border ${
-              isDark ? 'bg-[#18181c] border-zinc-700/60' : 'bg-zinc-100 border-zinc-300'
-            }`}>
-              <img src={formativeLogo} alt="Formative" className="w-full h-full object-contain rounded" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold tracking-tight">
-                New Architecture Workspace
-              </h3>
-              <p className="text-xs text-zinc-400">
-                Create a fresh software blueprint and AI agent environment
-              </p>
-            </div>
-          </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent theme={theme} size="lg" onClose={onClose}>
+        <DialogHeader theme={theme}>
+          <DialogTitle theme={theme} className="flex items-center gap-2">
+            <Plus className="w-5 h-5 text-brand-primary" />
+            <span>Create New Workspace</span>
+          </DialogTitle>
+          <DialogDescription theme={theme}>
+            {step === 'type' 
+              ? 'Choose a project type to get started with the right template' 
+              : 'Configure your new workspace details'}
+          </DialogDescription>
+        </DialogHeader>
 
-          <button
-            onClick={onClose}
-            className={`p-1.5 rounded-lg transition-colors ${
-              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-black hover:bg-zinc-200'
-            }`}
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6 space-y-5">
-          {/* Project Name */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-              Workspace Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Payments Microservice, AI Customer Service Engine..."
-              className={`w-full px-3.5 py-2.5 rounded-lg border text-sm font-medium focus:outline-none transition-colors ${
-                isDark 
-                  ? 'bg-[#121215] border-[#27272a] text-white focus:border-zinc-400 placeholder-zinc-600' 
-                  : 'bg-zinc-50 border-zinc-200 text-black focus:border-zinc-400 placeholder-zinc-400'
-              }`}
-              autoFocus
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-              Description (Optional)
-            </label>
-            <input
-              type="text"
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              placeholder="Brief summary of what this system does..."
-              className={`w-full px-3.5 py-2.5 rounded-lg border text-sm focus:outline-none transition-colors ${
-                isDark 
-                  ? 'bg-[#121215] border-[#27272a] text-zinc-200 focus:border-zinc-400 placeholder-zinc-600' 
-                  : 'bg-zinc-50 border-zinc-200 text-zinc-800 focus:border-zinc-400 placeholder-zinc-400'
-              }`}
-            />
-          </div>
-
-          {/* Template Selection */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-              Starting Architecture Blueprint
-            </label>
-            <div className="max-h-56 overflow-y-auto pr-1 space-y-2">
-              {templates.map((t, idx) => {
-                const Icon = t.icon;
-                const isSelected = selectedTemplateIndex === idx;
+        {/* Step Content */}
+        <div className="py-4">
+          {step === 'type' ? (
+            /* Type Selection Step */
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {projectTypes.map((type) => {
+                const Icon = type.icon;
+                const isSelected = selectedType === type.id;
+                
                 return (
-                  <button
-                    key={t.title}
-                    type="button"
-                    onClick={() => setSelectedTemplateIndex(idx)}
-                    className={`flex items-start gap-3.5 p-3 rounded-lg border text-left transition-all ${
-                      isSelected
-                        ? isDark
-                          ? 'bg-[#18181c] border-white text-white ring-1 ring-white/50'
-                          : 'bg-zinc-100 border-zinc-900 text-black ring-1 ring-zinc-900'
-                        : isDark
-                        ? 'bg-[#121215] border-[#27272a] text-zinc-400 hover:text-zinc-200 hover:border-zinc-600'
-                        : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:text-black hover:border-zinc-300'
-                    }`}
+                  <Card
+                    key={type.id}
+                    variant={isSelected ? 'elevated' : 'interactive'}
+                    theme={theme}
+                    onClick={() => handleSelectType(type.id)}
+                    className={cn(
+                      'cursor-pointer transition-all',
+                      isSelected && 'ring-2 ring-brand-primary'
+                    )}
                   >
-                    <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${
-                      isSelected 
-                        ? isDark ? 'bg-white text-black' : 'bg-black text-white' 
-                        : isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-600'
-                    }`}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold flex items-center gap-2">
-                        <span>{t.title}</span>
-                        {isSelected && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        )}
+                    <CardHeader theme={theme}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-hover">
+                          <Icon className="w-4 h-4 text-brand-primary" />
+                        </div>
+                        <CardTitle theme={theme} className="text-sm">
+                          {type.label}
+                        </CardTitle>
                       </div>
-                      <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">
-                        {t.desc}
-                      </p>
-                    </div>
-                  </button>
+                      <CardDescription theme={theme} className="text-xs">
+                        {type.description}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
                 );
               })}
             </div>
-          </div>
+          ) : (
+            /* Details Step */
+            <div className="space-y-4">
+              {/* Project Name */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  Workspace Name
+                </label>
+                <Input
+                  theme={theme}
+                  placeholder="My Architecture Project"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              {/* Project Description */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  placeholder="Brief description of your architecture..."
+                  className={cn(
+                    `w-full px-3 py-2 rounded-lg border text-sm resize-none`,
+                    `focus:outline-none focus:ring-2 focus:ring-brand-primary`,
+                    isDark
+                      ? 'bg-dark-surface border-dark-border text-text-primary placeholder:text-muted min-h-[100px]'
+                      : 'bg-white border-light-border text-zinc-900 placeholder:text-zinc-400 min-h-[100px]'
+                  )}
+                />
+              </div>
+
+              {/* Selected Type Display */}
+              <div className="pt-2">
+                <p className="text-sm text-muted mb-2">
+                  Project Type
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-hover">
+                    {projectTypes.find(t => t.id === selectedType)?.icon({ className: 'w-4 h-4 text-brand-primary' })}
+                  </div>
+                  <span className="text-sm font-medium">
+                    {projectTypes.find(t => t.id === selectedType)?.label}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    theme={theme}
+                    onClick={handleBack}
+                    className="text-xs"
+                  >
+                    Change
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <div className={`px-6 py-4 border-t flex items-center justify-end gap-3 ${
-          isDark ? 'bg-[#121215] border-[#27272a]' : 'bg-zinc-50 border-zinc-200'
-        }`}>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${
-              isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'
-            }`}
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCreate}
-            className="px-5 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all active:scale-95 flex items-center gap-2"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create Workspace</span>
-          </button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter theme={theme}>
+          {step === 'type' ? (
+            <Button variant="outline" size="sm" theme={theme} onClick={onClose}>
+              Cancel
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" theme={theme} onClick={handleBack}>
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                theme={theme}
+                onClick={handleCreate}
+                disabled={!projectName.trim()}
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Workspace</span>
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
+
+export default NewProjectModal;

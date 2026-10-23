@@ -1,41 +1,54 @@
+/**
+ * Formative Studio - Redesigned Launchpad Modal
+ * 
+ * A modern launchpad with proper design system integration.
+ */
+
 import React, { useState } from 'react';
-import { 
-  X, 
-  FolderOpen, 
-  FolderGit2, 
-  Bot, 
-  ArrowRight, 
-  Plus, 
+import {
+  Layers,
+  FolderOpen,
+  Plus,
+  Bot,
   Trash2,
   BookOpen,
+  ArrowRight,
+  Search,
+  Crown,
+  Cpu,
   Terminal,
-  Layers,
+  Database,
+  FileText,
+  ExternalLink,
   Sparkles
 } from 'lucide-react';
-import { AgentSession, Project, AgentProvider, ProjectType, ThemeMode } from '../types';
-import { SAMPLE_TEMPLATES } from '../data/defaultProjects';
-import formativeLogo from '../assets/FormativeLogo.png';
+import { Project, ThemeMode, AgentProvider, AgentSession } from '../types';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/card';
+import { cn, getInitials, truncate } from '../lib/utils';
 
 interface LaunchpadModalProps {
-  theme?: ThemeMode;
+  theme: ThemeMode;
   isOpen: boolean;
   onClose: () => void;
   sessions: AgentSession[];
   selectedProvider: AgentProvider;
   onChangeProvider: (provider: AgentProvider) => void;
   onSelectSession: (session: AgentSession) => void;
-  onScanDirectory: (path?: string) => void;
+  onScanDirectory: () => void;
   onSelectCustomTranscript: () => void;
   projects: Project[];
   activeProjectId: string;
   onSelectProject: (id: string) => void;
-  onCreateBlankProject: (name: string, type: ProjectType) => void;
+  onCreateBlankProject: (name: string, type: string) => void;
   onDeleteProject: (id: string) => void;
-  onLoadTemplate?: (template: Project) => void;
+  onLoadTemplate: (template?: Project) => void;
 }
 
 export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
-  theme = 'dark',
+  theme,
   isOpen,
   onClose,
   sessions,
@@ -51,345 +64,327 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
   onDeleteProject,
   onLoadTemplate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'workspaces' | 'ai-providers' | 'templates'>('workspaces');
+  const isDark = theme === 'dark';
+  const [activeTab, setActiveTab] = useState<'projects' | 'ai' | 'templates'>('projects');
   const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectType, setNewProjectType] = useState<ProjectType>('general');
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  if (!isOpen) return null;
+  // Filter projects based on search query
+  const filteredProjects = projects.filter((project) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      project.name.toLowerCase().includes(query) ||
+      project.description.toLowerCase().includes(query)
+    );
+  });
 
-  const isDark = theme !== 'light';
+  // Provider options
+  const providers: Array<{ id: AgentProvider; label: string; icon: React.ElementType }> = [
+    { id: 'claude-code', label: 'Claude Code', icon: Crown },
+    { id: 'opencode', label: 'OpenCode', icon: Code },
+    { id: 'antigravity', label: 'Antigravity', icon: Sparkles },
+    { id: 'custom', label: 'Custom File', icon: FileText },
+  ];
 
-  const handleCreateNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProjectName.trim()) return;
-    onCreateBlankProject(newProjectName.trim(), newProjectType);
-    setNewProjectName('');
-    setIsCreatingNew(false);
-    onClose();
+  // Template options
+  const templates = [
+    { name: 'Full-Stack Web', type: 'web', description: 'React/Next.js frontend with API Gateway and PostgreSQL' },
+    { name: 'AI Agent Workflow', type: 'ai-system', description: 'Autonomous AI agent with tool orchestration' },
+    { name: 'Microservices', type: 'backend', description: 'Cloud microservices with event-driven architecture' },
+    { name: 'Mobile Engine', type: 'mobile', description: 'React Native with GraphQL and Lambda workers' },
+    { name: 'Realtime System', type: 'realtime', description: 'Collaborative canvas with WebSocket signaling' },
+    { name: 'Data Pipeline', type: 'data-pipeline', description: 'Vector lakehouse with ingestion and embedding workers' },
+  ];
+
+  // Handle project creation
+  const handleCreateProject = () => {
+    if (newProjectName.trim()) {
+      onCreateBlankProject(newProjectName, 'general');
+      setNewProjectName('');
+      onClose();
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
-      <div className={`w-full max-w-3xl border rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] ${
-        isDark ? 'bg-[#09090b] border-[#27272a] text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
-      }`}>
-        {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${
-          isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center p-1 border ${
-              isDark ? 'bg-[#18181c] border-zinc-700/60' : 'bg-zinc-100 border-zinc-300'
-            }`}>
-              <img src={formativeLogo} alt="Formative" className="w-full h-full object-contain rounded" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">
-                Studio Launchpad & Settings
-              </h2>
-              <p className="text-xs text-zinc-400">
-                Manage repositories, agent connections, and starter blueprints
-              </p>
-            </div>
-          </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        theme={theme}
+        size="xl"
+        onClose={onClose}
+        className="max-w-4xl"
+      >
+        <DialogHeader theme={theme}>
+          <DialogTitle theme={theme} className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-brand-primary" />
+            <span>Studio Launchpad</span>
+          </DialogTitle>
+          <DialogDescription theme={theme}>
+            Open workspaces, connect AI agents, or start from a template
+          </DialogDescription>
+        </DialogHeader>
 
-          <button
-            onClick={onClose}
-            className={`p-1.5 rounded-lg transition-colors ${
-              isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-black hover:bg-zinc-200'
-            }`}
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Tabs */}
+        <div
+          className={cn(
+            'flex border-b',
+            isDark ? 'border-dark-border' : 'border-light-border'
+          )}
+        >
+          {[
+            { id: 'projects', label: 'Workspaces' },
+            { id: 'ai', label: 'AI Agents' },
+            { id: 'templates', label: 'Templates' },
+          ].map((tab) => (
+            <Button
+              key={tab.id}
+              variant="ghost"
+              size="sm"
+              theme={theme}
+              onClick={() => setActiveTab(tab.id as 'projects' | 'ai' | 'templates')}
+              className={cn(
+                'rounded-none',
+                activeTab === tab.id 
+                  ? 'border-b-2 border-brand-primary text-brand-primary' 
+                  : ''
+              )}
+            >
+              {tab.label}
+            </Button>
+          ))}
         </div>
 
-        {/* Paperclip Tab Switcher */}
-        <div className={`flex border-b px-6 text-xs font-medium gap-2 pt-2 ${
-          isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-        }`}>
-          <button
-            onClick={() => setActiveTab('workspaces')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
-              activeTab === 'workspaces'
-                ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <FolderGit2 className="w-3.5 h-3.5" />
-            <span>Workspaces ({projects.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ai-providers')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
-              activeTab === 'ai-providers'
-                ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Bot className="w-3.5 h-3.5" />
-            <span>AI Agent Connections ({sessions.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('templates')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
-              activeTab === 'templates'
-                ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Blueprints</span>
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-4 flex-1">
-          {/* TAB 1: WORKSPACES */}
-          {activeTab === 'workspaces' && (
+        {/* Tab Content */}
+        <div className="py-4">
+          {/* Projects Tab */}
+          {activeTab === 'projects' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Action A: Browse Folder */}
-                <button
-                  onClick={() => {
-                    onScanDirectory();
-                    onClose();
-                  }}
-                  className={`p-4 rounded-xl border text-left transition-all ${
-                    isDark 
-                      ? 'border-[#27272a] bg-[#121215] hover:border-zinc-500 hover:bg-[#18181c]' 
-                      : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400 hover:bg-white shadow-xs'
-                  }`}
+              {/* Search and New Project */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <Input
+                    theme={theme}
+                    placeholder="Search workspaces..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    leftIcon={<Search className="w-4 h-4" />}
+                    className="text-sm"
+                  />
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  theme={theme}
+                  onClick={onScanDirectory}
+                  className="flex items-center gap-2"
                 >
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <FolderOpen className="w-4 h-4 text-blue-400" />
-                    <h4 className="text-sm font-semibold">Open Local Folder</h4>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Scan an existing repository on disk to auto-map architecture.
-                  </p>
-                </button>
-
-                {/* Action B: Create Blank Project */}
-                <button
-                  onClick={() => setIsCreatingNew(true)}
-                  className={`p-4 rounded-xl border text-left transition-all ${
-                    isDark 
-                      ? 'border-[#27272a] bg-[#121215] hover:border-zinc-500 hover:bg-[#18181c]' 
-                      : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400 hover:bg-white shadow-xs'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <Plus className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-sm font-semibold">New Blank Workspace</h4>
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
-                    Start an empty architecture blueprint from scratch.
-                  </p>
-                </button>
+                  <FolderOpen className="w-4 h-4" />
+                  <span>Scan Folder</span>
+                </Button>
               </div>
 
-              {/* Inline Create Form */}
-              {isCreatingNew && (
-                <form onSubmit={handleCreateNew} className={`p-4 rounded-xl border space-y-3 ${
-                  isDark ? 'border-zinc-600 bg-[#18181c]' : 'border-zinc-300 bg-zinc-100'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <h5 className="text-sm font-semibold">New Workspace Name</h5>
-                    <button type="button" onClick={() => setIsCreatingNew(false)} className="text-zinc-400 hover:text-white">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <input
-                      type="text"
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                      placeholder="e.g. Payments Microservice"
-                      autoFocus
-                      className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium focus:outline-none ${
-                        isDark ? 'bg-[#121215] border-[#27272a] text-white focus:border-white' : 'bg-white border-zinc-200 text-black focus:border-black'
-                      }`}
-                    />
-                    <select
-                      value={newProjectType}
-                      onChange={(e) => setNewProjectType(e.target.value as ProjectType)}
-                      className={`px-3 py-2 rounded-lg border text-sm font-medium focus:outline-none ${
-                        isDark ? 'bg-[#121215] border-[#27272a] text-white focus:border-white' : 'bg-white border-zinc-200 text-black focus:border-black'
-                      }`}
+              {/* Project List */}
+              {filteredProjects.length === 0 ? (
+                <Card variant="bordered" theme={theme} className="text-center">
+                  <CardContent theme={theme} className="py-6">
+                    <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center mx-auto mb-3">
+                      <Layers className="w-6 h-6 text-muted" />
+                    </div>
+                    <CardTitle theme={theme} className="text-lg mb-2">
+                      No workspaces found
+                    </CardTitle>
+                    <CardDescription theme={theme}>
+                      Create a new workspace or scan a project folder to get started.
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {filteredProjects.map((proj) => (
+                    <Card
+                      key={proj.id}
+                      variant={activeProjectId === proj.id ? 'elevated' : 'bordered'}
+                      theme={theme}
+                      onClick={() => onSelectProject(proj.id)}
+                      className="cursor-pointer"
                     >
-                      <option value="general">General System</option>
-                      <option value="web">Web Application</option>
-                      <option value="backend">Backend & APIs</option>
-                      <option value="ai-system">AI System</option>
-                    </select>
-                    <button
-                      type="submit"
-                      disabled={!newProjectName.trim()}
-                      className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-40 text-xs font-semibold shadow-sm transition-all"
-                    >
-                      Create
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Saved Projects List */}
-              <div className="space-y-2 pt-2">
-                <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-                  Workspaces ({projects.length})
-                </span>
-
-                {projects.length === 0 ? (
-                  <div className={`p-8 rounded-xl border text-center text-sm text-zinc-400 ${
-                    isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-                  }`}>
-                    No workspaces created yet.
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-72 overflow-y-auto">
-                    {projects.map((p) => {
-                      const isActive = p.id === activeProjectId;
-                      return (
-                        <div
-                          key={p.id}
-                          className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
-                            isActive
-                              ? isDark ? 'border-white bg-[#18181c]' : 'border-black bg-zinc-100 shadow-xs'
-                              : isDark ? 'border-[#27272a] bg-[#121215] hover:border-zinc-600' : 'border-zinc-200 bg-white hover:border-zinc-300'
-                          }`}
-                        >
-                          <div className="space-y-0.5 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold truncate">{p.name}</span>
-                              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase border ${
-                                isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
-                              }`}>
-                                {p.type}
-                              </span>
-                            </div>
-                            <p className="text-xs text-zinc-400 truncate max-w-md">
-                              {p.description || p.folderPath || 'Workspace'}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-xs font-mono text-zinc-500 mr-1">
-                              {p.nodes?.length || 0} nodes
-                            </span>
-                            {!isActive && (
-                              <button
-                                onClick={() => {
-                                  onSelectProject(p.id);
-                                  onClose();
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-xs transition-all"
-                              >
-                                Open
-                              </button>
+                      <CardHeader theme={theme}>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0',
+                              isDark 
+                                ? 'bg-dark-surface-hover text-text-primary' 
+                                : 'bg-light-surface-hover text-zinc-900'
                             )}
-                            <button
-                              onClick={() => onDeleteProject(p.id)}
-                              className="p-1.5 rounded text-zinc-400 hover:text-red-400 transition-colors"
-                              title="Delete Project"
+                          >
+                            {getInitials(proj.name, 2)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <CardTitle theme={theme} className="text-base">
+                              {proj.name}
+                            </CardTitle>
+                            <CardDescription theme={theme}>
+                              {truncate(proj.description || '', 60)}
+                            </CardDescription>
+                          </div>
+                          
+                          {/* Active indicator */}
+                          {activeProjectId === proj.id && (
+                            <span className="w-2 h-2 rounded-full bg-brand-primary" />
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardFooter theme={theme}>
+                        <div className="flex items-center justify-between w-full">
+                          <span
+                            className={cn(
+                              'text-xs font-mono px-2 py-0.5 rounded border',
+                              isDark 
+                                ? 'bg-dark-surface-hover border-dark-border text-text-muted' 
+                                : 'bg-light-surface-hover border-light-border text-zinc-600'
+                            )}
+                          >
+                            {proj.type || 'workspace'}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted">
+                              {proj.nodes?.length || 0} nodes
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              theme={theme}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteProject(proj.id);
+                              }}
+                              className="h-5 w-5 p-0"
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              <Trash2 className="w-3 h-3 text-red-500" />
+                            </Button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* New Project Form */}
+              <div className="pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Input
+                    theme={theme}
+                    placeholder="New workspace name..."
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+                    className="flex-1 text-sm"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    theme={theme}
+                    onClick={handleCreateProject}
+                    disabled={!newProjectName.trim()}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create</span>
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: AI PROVIDERS */}
-          {activeTab === 'ai-providers' && (
+          {/* AI Tab */}
+          {activeTab === 'ai' && (
             <div className="space-y-4">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Coding Agent Telemetry & Connections</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Select which agent session to inspect on the architecture canvas and Operations Floor.
-                </p>
-              </div>
-
-              {/* Provider Grid */}
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { id: 'claude-code', label: 'Claude Code' },
-                  { id: 'opencode', label: 'OpenCode / Codex' },
-                  { id: 'antigravity', label: 'Antigravity' },
-                  { id: 'custom', label: 'Custom File' },
-                ].map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => onChangeProvider(p.id as AgentProvider)}
-                    className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
-                      selectedProvider === p.id
-                        ? isDark ? 'bg-white text-black border-white' : 'bg-black text-white border-black'
-                        : isDark ? 'border-[#27272a] bg-[#121215] text-zinc-400 hover:text-white' : 'border-zinc-200 bg-zinc-50 text-zinc-600 hover:text-black'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Sessions list */}
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-                    Discovered Sessions ({sessions.length})
-                  </span>
-                  {selectedProvider === 'custom' && (
-                    <button
-                      onClick={onSelectCustomTranscript}
-                      className="text-xs text-white hover:underline flex items-center gap-1.5"
-                    >
-                      <FolderOpen className="w-3.5 h-3.5" />
-                      <span>Browse Transcript File...</span>
-                    </button>
-                  )}
-                </div>
-
-                {sessions.length === 0 ? (
-                  <div className={`p-8 rounded-xl border text-center space-y-2 ${
-                    isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-                  }`}>
-                    <Terminal className="w-8 h-8 text-zinc-500 mx-auto" />
-                    <p className="text-sm font-semibold">No active sessions detected</p>
-                    <p className="text-xs text-zinc-400">
-                      Launch an agent session in your terminal or select a custom transcript log.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {sessions.map((sess) => (
-                      <div
-                        key={sess.id}
-                        className={`p-3 rounded-xl border flex items-center justify-between ${
-                          isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-white'
-                        }`}
+              {/* Provider Selection */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">
+                  AI Provider
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {providers.map((provider) => {
+                    const Icon = provider.icon;
+                    const isSelected = selectedProvider === provider.id;
+                    
+                    return (
+                      <Button
+                        key={provider.id}
+                        variant={isSelected ? 'primary' : 'outline'}
+                        size="sm"
+                        theme={theme}
+                        onClick={() => onChangeProvider(provider.id)}
+                        className="flex items-center gap-2"
                       >
-                        <div>
-                          <div className="text-sm font-semibold">{sess.title}</div>
-                          <div className="text-xs text-zinc-400 font-mono mt-0.5">{sess.transcriptPath}</div>
-                        </div>
+                        <Icon className="w-4 h-4" />
+                        <span>{provider.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                        <button
-                          onClick={() => {
-                            onSelectSession(sess);
-                            onClose();
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold"
-                        >
-                          Connect
-                        </button>
+              {/* Sessions List */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">
+                  Available Sessions
+                </h3>
+                
+                {sessions.length === 0 ? (
+                  <Card variant="bordered" theme={theme} className="text-center">
+                    <CardContent theme={theme} className="py-6">
+                      <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center mx-auto mb-3">
+                        <Bot className="w-6 h-6 text-muted" />
                       </div>
+                      <CardTitle theme={theme} className="text-lg mb-2">
+                        No sessions found
+                      </CardTitle>
+                      <CardDescription theme={theme}>
+                        {selectedProvider === 'custom' 
+                          ? 'Select a custom transcript file to connect' 
+                          : `No active ${selectedProvider} sessions detected`}
+                      </CardDescription>
+                      
+                      {selectedProvider === 'custom' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          theme={theme}
+                          onClick={onSelectCustomTranscript}
+                          className="mt-3"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span>Select Custom File</span>
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {sessions.map((session) => (
+                      <Card
+                        key={session.id}
+                        variant="interactive"
+                        theme={theme}
+                        onClick={() => onSelectSession(session)}
+                        className="cursor-pointer"
+                      >
+                        <CardHeader theme={theme}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle theme={theme} className="text-sm">
+                                {session.title}
+                              </CardTitle>
+                              <CardDescription theme={theme}>
+                                {session.provider} - {session.lineCount} lines
+                              </CardDescription>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-muted" />
+                          </div>
+                        </CardHeader>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -397,54 +392,63 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: BLUEPRINTS */}
+          {/* Templates Tab */}
           {activeTab === 'templates' && (
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Standard Architecture Blueprints</h4>
-                <p className="text-xs text-zinc-400">
-                  Pre-configured, production-ready system architectures.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 pt-2">
-                {SAMPLE_TEMPLATES.map((tmpl) => (
-                  <div
-                    key={tmpl.id}
-                    className={`p-4 rounded-xl border flex items-center justify-between ${
-                      isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
-                    }`}
+            <div className="space-y-4">
+              <p className="text-sm text-muted">
+                Choose from 7 production-grade architecture blueprints to jumpstart your design.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {templates.map((template) => (
+                  <Card
+                    key={template.name}
+                    variant="interactive"
+                    theme={theme}
+                    onClick={() => onLoadTemplate()}
+                    className="cursor-pointer"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h5 className="text-sm font-semibold">{tmpl.name}</h5>
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border uppercase ${
-                          isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
-                        }`}>
-                          {tmpl.type}
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-400 mt-1 max-w-lg">
-                        {tmpl.description}
+                    <CardHeader theme={theme}>
+                      <CardTitle theme={theme} className="text-base">
+                        {template.name}
+                      </CardTitle>
+                      <CardDescription theme={theme}>
+                        {template.type}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent theme={theme}>
+                      <p className="text-sm text-muted">
+                        {template.description}
                       </p>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        if (onLoadTemplate) onLoadTemplate(tmpl);
-                        onClose();
-                      }}
-                      className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0"
-                    >
-                      Load Blueprint
-                    </button>
-                  </div>
+                    </CardContent>
+                    <CardFooter theme={theme}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        theme={theme}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onLoadTemplate();
+                        }}
+                      >
+                        Use Template
+                      </Button>
+                    </CardFooter>
+                  </Card>
                 ))}
               </div>
             </div>
           )}
         </div>
-      </div>
-    </div>
+
+        <DialogFooter theme={theme}>
+          <Button variant="outline" size="sm" theme={theme} onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
+
+export default LaunchpadModal;
