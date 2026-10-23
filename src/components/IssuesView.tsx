@@ -9,14 +9,11 @@ import {
   Circle,
   Square,
   X,
-  Play,
-  Square as StopSquare,
   Clock,
   User,
   Tag,
   Paperclip,
   CheckCircle2,
-  Terminal,
   Send,
   MessageSquare,
   Trash2
@@ -26,58 +23,9 @@ import { IssueItem, ThemeMode, Project } from '../types';
 interface IssuesViewProps {
   theme: ThemeMode;
   activeProject?: Project | null;
-  onUpdateProjectIssues?: (issues: IssueItem[]) => void;
+  onUpdateProjectIssues?: (issues: IssueItem[], nextTaskNumber?: number) => void;
   onOpenNewIssue?: () => void;
 }
-
-const INITIAL_DEMO_ISSUES: IssueItem[] = [
-  {
-    id: 'iss-1',
-    key: 'TASK-101',
-    title: 'Deploy API Gateway and authenticate client tokens',
-    status: 'in_progress',
-    assignee: 'Chief Executive Agent',
-    assigneeInitials: 'CEO',
-    projectName: 'Current Architecture',
-    projectColor: '#3b82f6',
-    isLive: true,
-    date: 'Today',
-    description: "Connect the frontend client to the API router. Verify that CORS headers are enabled and JWT tokens are properly validated before requests reach backend services.",
-    comments: [
-      {
-        author: 'Chief Executive Agent',
-        date: 'Today, 10:15 AM',
-        content: 'Currently inspecting local ports and API routes from project configuration.'
-      }
-    ]
-  },
-  {
-    id: 'iss-2',
-    key: 'TASK-102',
-    title: 'Design schema migrations for PostgreSQL database',
-    status: 'todo',
-    assignee: 'Data & Schema Architect',
-    assigneeInitials: 'DA',
-    projectName: 'Current Architecture',
-    projectColor: '#f59e0b',
-    isLive: false,
-    date: 'Yesterday',
-    description: 'Create primary tables for users, workspaces, and audit events using Prisma or Drizzle ORM.'
-  },
-  {
-    id: 'iss-3',
-    key: 'TASK-103',
-    title: 'Configure distributed Redis caching layer',
-    status: 'blocked',
-    assignee: 'Systems & Backend Specialist',
-    assigneeInitials: 'BE',
-    projectName: 'Current Architecture',
-    projectColor: '#10b981',
-    isLive: false,
-    date: '2 days ago',
-    description: 'Blocked waiting for local Redis port configuration and connection string secrets.'
-  }
-];
 
 export const IssuesView: React.FC<IssuesViewProps> = ({ 
   theme, 
@@ -95,10 +43,8 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [newCommentText, setNewCommentText] = useState('');
-  const [isLiveRunning, setIsLiveRunning] = useState(true);
   const [isCreatingIssue, setIsCreatingIssue] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newAssignee, setNewAssignee] = useState('Chief Executive Agent');
   const [newStatus, setNewStatus] = useState<'todo' | 'in_progress' | 'blocked' | 'done'>('todo');
 
   const isDark = theme !== 'light';
@@ -116,10 +62,10 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
     }
   }, [activeProject]);
 
-  const updateIssuesList = (updated: IssueItem[]) => {
+  const updateIssuesList = (updated: IssueItem[], nextTaskNumber?: number) => {
     setIssues(updated);
     if (onUpdateProjectIssues) {
-      onUpdateProjectIssues(updated);
+      onUpdateProjectIssues(updated, nextTaskNumber);
     }
   };
 
@@ -144,7 +90,6 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
         return {
           ...item,
           status: newStat,
-          isLive: newStat === 'in_progress'
         };
       }
       return item;
@@ -158,7 +103,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
 
     const newComment = {
       author: 'You (Operator)',
-      date: 'Just now',
+      date: new Date().toLocaleString(),
       content: newCommentText.trim()
     };
 
@@ -180,25 +125,28 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const newKey = `TASK-${issues.length + 101}`;
-    const initials = newAssignee.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AG';
+    const highestTaskNumber = issues.reduce((highest, issue) => {
+      const match = issue.key.match(/^TASK-(\d+)$/i);
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, Math.max(0, (activeProject?.nextTaskNumber || 1) - 1));
+    const nextTaskNumber = highestTaskNumber + 1;
+    const newKey = `TASK-${nextTaskNumber}`;
     const newIssue: IssueItem = {
-      id: `iss-${Date.now()}`,
+      id: `task-${globalThis.crypto.randomUUID()}`,
       key: newKey,
       title: newTitle.trim(),
       status: newStatus,
-      assignee: newAssignee,
-      assigneeInitials: initials,
-      projectName: activeProject?.name || 'Current Project',
+      assignee: 'Unassigned',
+      assigneeInitials: 'U',
+      projectName: activeProject?.name || 'Project',
       projectColor: '#3b82f6',
-      isLive: newStatus === 'in_progress',
-      date: 'Today',
-      description: 'Define requirements, target files, and expected outputs for this task.',
+      date: new Date().toLocaleDateString(),
+      description: '',
       comments: []
     };
 
     const updated = [newIssue, ...issues];
-    updateIssuesList(updated);
+    updateIssuesList(updated, nextTaskNumber + 1);
     setSelectedIssueId(newIssue.id);
     setNewTitle('');
     setIsCreatingIssue(false);
@@ -210,7 +158,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
   const doneList = issues.filter((i) => i.status === 'done');
 
   return (
-    <div className={`flex flex-1 h-full overflow-hidden select-none ${
+    <div className={`flex flex-1 h-full overflow-hidden ${
       isDark ? 'bg-[#09090b] text-zinc-100' : 'bg-white text-zinc-900'
     }`}>
       {/* 1. Main Issues List Column */}
@@ -249,7 +197,10 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
           }`}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-300">Create New Project Task</span>
+              <div>
+                <span className="text-xs font-semibold text-zinc-300">New task</span>
+                <p className="text-[11px] text-zinc-500 mt-0.5">Tasks are saved to this project. They do not start an agent run.</p>
+              </div>
               <button type="button" onClick={() => setIsCreatingIssue(false)} className="text-zinc-500 hover:text-white">
                 <X className="w-4 h-4" />
               </button>
@@ -265,20 +216,6 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
               }`}
             />
             <div className="flex items-center gap-3">
-              <select
-                value={newAssignee}
-                onChange={(e) => setNewAssignee(e.target.value)}
-                className={`px-3 py-1.5 rounded-lg border text-xs ${
-                  isDark ? 'bg-[#18181c] border-[#27272a] text-zinc-200' : 'bg-white border-zinc-300 text-zinc-800'
-                }`}
-              >
-                <option value="Chief Executive Agent">Chief Executive Agent</option>
-                <option value="Frontend & UI Specialist">Frontend & UI Specialist</option>
-                <option value="Systems & Backend Specialist">Systems & Backend Specialist</option>
-                <option value="QA, Test & DevOps Lead">QA, Test & DevOps Lead</option>
-                <option value="Data & Schema Architect">Data & Schema Architect</option>
-              </select>
-
               <select
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as any)}
@@ -314,7 +251,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             <div>
               <p className="text-sm font-semibold">No tasks created yet</p>
               <p className="text-xs text-zinc-400 max-w-xs mt-1">
-                Create tasks for your architecture roadmap or let your agent track work.
+                Create tasks for this project. Agent assignment will be available when agent runs are connected.
               </p>
             </div>
             <button
@@ -359,12 +296,6 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                           <span className="w-3.5 h-3.5 rounded-full border-2 border-amber-400 shrink-0" />
                           <span className="text-xs font-mono text-zinc-400 shrink-0 font-medium">{item.key}</span>
                           <span className="text-sm font-semibold truncate group-hover:underline">{item.title}</span>
-                          {item.isLive && (
-                            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 shrink-0 flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                              <span>Live</span>
-                            </span>
-                          )}
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0">
@@ -583,52 +514,15 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             </p>
           </div>
 
-          {/* AI Agent Execution Console Card */}
+          {/* Agent runs will be connected after a real provider can start and control them. */}
           <div className="p-5 border-b border-zinc-800/80 space-y-3">
-            <div className={`p-4 rounded-xl border space-y-2.5 ${
+            <div className={`p-4 rounded-xl border space-y-2 ${
               isDark ? 'bg-[#121215] border-[#27272a]' : 'bg-zinc-50 border-zinc-200'
             }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold">
-                  <span className={`w-2 h-2 rounded-full ${isLiveRunning ? 'bg-blue-400 animate-pulse' : 'bg-zinc-500'}`} />
-                  <span>AI Agent Execution Stream</span>
-                </div>
-
-                <button
-                  onClick={() => setIsLiveRunning(!isLiveRunning)}
-                  className={`px-2.5 py-1 rounded-md border text-[11px] font-semibold flex items-center gap-1.5 transition-colors ${
-                    isLiveRunning
-                      ? 'border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                  }`}
-                >
-                  {isLiveRunning ? (
-                    <>
-                      <StopSquare className="w-3 h-3" />
-                      <span>Stop Run</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3 h-3" />
-                      <span>Run Agent</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Console log stream */}
-              <div className="p-3 rounded-lg bg-black border border-zinc-800 text-[11px] font-mono space-y-1 text-zinc-300">
-                <div className="text-emerald-400">$ agent run --task {selectedIssue.key}</div>
-                <div className="text-zinc-500">
-                  {isLiveRunning ? 'Streaming live reasoning from local agent workspace...' : 'Execution stopped.'}
-                </div>
-                {isLiveRunning && (
-                  <div className="text-blue-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                    <span>{selectedIssue.assignee} active • observing context</span>
-                  </div>
-                )}
-              </div>
+              <p className="text-xs font-semibold text-zinc-300">No agent run is linked to this task.</p>
+              <p className="text-xs leading-relaxed text-zinc-400">
+                Formative does not start or stop agents from this screen yet. When a real agent run is available, its actual progress will appear here.
+              </p>
             </div>
           </div>
 

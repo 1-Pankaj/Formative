@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   X, 
   FolderOpen, 
@@ -56,6 +56,10 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
   const [newProjectType, setNewProjectType] = useState<ProjectType>('general');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
 
+  useEffect(() => {
+    if (!activeProjectId && activeTab === 'ai-providers') setActiveTab('workspaces');
+  }, [activeProjectId, activeTab]);
+
   if (!isOpen) return null;
 
   const isDark = theme !== 'light';
@@ -89,7 +93,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                 Studio Launchpad & Settings
               </h2>
               <p className="text-xs text-zinc-400">
-                Manage repositories, agent connections, and starter blueprints
+                Manage projects, inspect saved transcripts, and open starter examples
               </p>
             </div>
           </div>
@@ -117,19 +121,21 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
             }`}
           >
             <FolderGit2 className="w-3.5 h-3.5" />
-            <span>Workspaces ({projects.length})</span>
+            <span>Projects ({projects.length})</span>
           </button>
 
           <button
+            disabled={!activeProjectId}
             onClick={() => setActiveTab('ai-providers')}
-            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 ${
+            title={activeProjectId ? 'Inspect saved transcripts in this project context' : 'Choose a project before opening transcripts'}
+            className={`flex items-center gap-2 py-2 px-3 rounded-t-lg transition-all border-b-2 disabled:opacity-40 disabled:cursor-not-allowed ${
               activeTab === 'ai-providers'
                 ? isDark ? 'border-white text-white font-semibold' : 'border-black text-black font-semibold'
                 : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>AI Agent Connections ({sessions.length})</span>
+            <span>{activeProjectId ? `Session transcripts (${sessions.length})` : 'Choose a project for transcripts'}</span>
           </button>
 
           <button
@@ -141,7 +147,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Blueprints</span>
+            <span>Starter Examples</span>
           </button>
         </div>
 
@@ -183,10 +189,10 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                 >
                   <div className="flex items-center gap-2.5 mb-1.5">
                     <Plus className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-sm font-semibold">New Blank Workspace</h4>
+                    <h4 className="text-sm font-semibold">New Blank Project</h4>
                   </div>
                   <p className="text-xs text-zinc-400 leading-relaxed">
-                    Start an empty architecture blueprint from scratch.
+                    Start with an empty project canvas.
                   </p>
                 </button>
               </div>
@@ -197,7 +203,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                   isDark ? 'border-zinc-600 bg-[#18181c]' : 'border-zinc-300 bg-zinc-100'
                 }`}>
                   <div className="flex items-center justify-between">
-                    <h5 className="text-sm font-semibold">New Workspace Name</h5>
+                    <h5 className="text-sm font-semibold">Project name</h5>
                     <button type="button" onClick={() => setIsCreatingNew(false)} className="text-zinc-400 hover:text-white">
                       <X className="w-4 h-4" />
                     </button>
@@ -239,14 +245,14 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
               {/* Saved Projects List */}
               <div className="space-y-2 pt-2">
                 <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-                  Workspaces ({projects.length})
+                  Projects ({projects.length})
                 </span>
 
                 {projects.length === 0 ? (
                   <div className={`p-8 rounded-xl border text-center text-sm text-zinc-400 ${
                     isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
                   }`}>
-                    No workspaces created yet.
+                    No projects yet.
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-72 overflow-y-auto">
@@ -264,6 +270,11 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                           <div className="space-y-0.5 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold truncate">{p.name}</span>
+                            {p.source && (
+                              <span className="text-[10px] font-mono uppercase text-zinc-500">
+                                {p.source === 'folder-map' ? 'Folder map' : 'Example'}
+                              </span>
+                            )}
                               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase border ${
                                 isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
                               }`}>
@@ -271,13 +282,13 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                               </span>
                             </div>
                             <p className="text-xs text-zinc-400 truncate max-w-md">
-                              {p.description || p.folderPath || 'Workspace'}
+                              {p.description || p.folderPath || 'Project'}
                             </p>
                           </div>
 
                           <div className="flex items-center gap-2 shrink-0">
                             <span className="text-xs font-mono text-zinc-500 mr-1">
-                              {p.nodes?.length || 0} nodes
+                              {p.nodes?.length || 0} {p.source === 'folder-map' ? 'items' : 'components'}
                             </span>
                             {!isActive && (
                               <button
@@ -311,9 +322,9 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
           {activeTab === 'ai-providers' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Coding Agent Telemetry & Connections</h4>
+                <h4 className="text-sm font-semibold">Agent session transcripts</h4>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Select which agent session to inspect on the architecture canvas and Operations Floor.
+                  Choose a saved transcript to inspect. Formative does not start or control agent runs yet.
                 </p>
               </div>
 
@@ -321,7 +332,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
               <div className="grid grid-cols-4 gap-2">
                 {[
                   { id: 'claude-code', label: 'Claude Code' },
-                  { id: 'opencode', label: 'OpenCode / Codex' },
+                  { id: 'opencode', label: 'OpenCode' },
                   { id: 'antigravity', label: 'Antigravity' },
                   { id: 'custom', label: 'Custom File' },
                 ].map((p) => (
@@ -343,12 +354,12 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-                    Discovered Sessions ({sessions.length})
+                    Readable Transcripts ({sessions.length})
                   </span>
                   {selectedProvider === 'custom' && (
                     <button
                       onClick={onSelectCustomTranscript}
-                      className="text-xs text-white hover:underline flex items-center gap-1.5"
+                      className={`text-xs hover:underline flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-zinc-900'}`}
                     >
                       <FolderOpen className="w-3.5 h-3.5" />
                       <span>Browse Transcript File...</span>
@@ -361,9 +372,9 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                     isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'
                   }`}>
                     <Terminal className="w-8 h-8 text-zinc-500 mx-auto" />
-                    <p className="text-sm font-semibold">No active sessions detected</p>
+                    <p className="text-sm font-semibold">No readable transcripts found</p>
                     <p className="text-xs text-zinc-400">
-                      Launch an agent session in your terminal or select a custom transcript log.
+                      Open an existing JSON or JSONL transcript to inspect its recorded activity.
                     </p>
                   </div>
                 ) : (
@@ -387,7 +398,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                           }}
                           className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold"
                         >
-                          Connect
+                          Open transcript
                         </button>
                       </div>
                     ))}
@@ -401,9 +412,9 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
           {activeTab === 'templates' && (
             <div className="space-y-3">
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Standard Architecture Blueprints</h4>
+                <h4 className="text-sm font-semibold">Starter examples</h4>
                 <p className="text-xs text-zinc-400">
-                  Pre-configured, production-ready system architectures.
+                  Static diagrams you can edit. They are not generated from your project files.
                 </p>
               </div>
 
@@ -436,7 +447,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
                       }}
                       className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0"
                     >
-                      Load Blueprint
+                      Open Example
                     </button>
                   </div>
                 ))}

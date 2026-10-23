@@ -28,6 +28,7 @@ export interface IssueItem {
 
 export interface Project {
   id: string;
+  source?: 'folder-map' | 'starter-example';
   name: string;
   description: string;
   type: ProjectType;
@@ -39,6 +40,7 @@ export interface Project {
   notes?: string;
   officeConfig?: ProjectOfficeConfig;
   issues?: IssueItem[];
+  nextTaskNumber?: number;
 }
 
 export type NodeCategory = 
@@ -52,7 +54,8 @@ export type NodeCategory =
   | 'ai-agent' 
   | 'auth'
   | 'service'
-  | 'note';
+  | 'note'
+  | 'folder';
 
 export type StepStatus = 'idle' | 'running' | 'done' | 'error' | 'skipped';
 

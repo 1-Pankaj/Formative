@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ theme, onAddNode, nodeCount, e
   const isDark = theme !== 'light';
 
   return (
-    <aside className={`w-60 border-r flex flex-col justify-between p-3 z-20 select-none overflow-y-auto shrink-0 ${
+    <aside className={`w-40 xl:w-52 2xl:w-60 border-r flex flex-col justify-between p-2.5 xl:p-3 z-20 select-none overflow-y-auto shrink-0 ${
       isDark 
         ? 'bg-[#0e0e11] border-[#27272a] text-zinc-300' 
         : 'bg-[#fafafa] border-zinc-200 text-zinc-800'

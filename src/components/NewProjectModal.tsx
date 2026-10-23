@@ -237,7 +237,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
-  const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(0);
+  const [selectedTemplateIndex, setSelectedTemplateIndex] = useState(templates.length - 1);
 
   // Hook must always run unconditionally to respect React Rules of Hooks
   useEffect(() => {
@@ -256,32 +256,21 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const handleCreate = () => {
     const tmpl = templates[selectedTemplateIndex];
     const newProj: Project = {
-      id: `proj-${Date.now()}`,
+      id: `proj-${globalThis.crypto.randomUUID()}`,
+      source: selectedTemplateIndex === templates.length - 1 ? undefined : 'starter-example',
       name: name.trim() || tmpl.title,
       description: desc.trim() || tmpl.desc,
       type: tmpl.type,
       updatedAt: new Date().toISOString(),
-      nodes: JSON.parse(JSON.stringify(tmpl.nodes)),
-      edges: JSON.parse(JSON.stringify(tmpl.edges)),
+      nodes: JSON.parse(JSON.stringify(tmpl.nodes)).map((node: any) => ({
+        ...node,
+        data: { ...node.data, status: 'idle' },
+      })),
+      edges: JSON.parse(JSON.stringify(tmpl.edges)).map((edge: any) => ({ ...edge, animated: false })),
       officeConfig: {
-        activeSkills: [],
-        ceoName: 'Chief Executive Agent'
+        activeSkills: []
       },
-      issues: [
-        {
-          id: `iss-${Date.now()}-1`,
-          key: 'TASK-1',
-          title: `Initial architecture setup for ${name.trim() || tmpl.title}`,
-          status: 'in_progress',
-          assignee: 'Chief Executive Agent',
-          assigneeInitials: 'CEO',
-          projectName: name.trim() || tmpl.title,
-          projectColor: '#3b82f6',
-          isLive: true,
-          date: 'Today',
-          description: 'Map initial services, boundaries, and communication ports for this workspace.'
-        }
-      ]
+      issues: [],
     };
     onCreateProject(newProj);
     setName('');
@@ -306,10 +295,10 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-semibold tracking-tight">
-                New Architecture Workspace
+                New Project
               </h3>
               <p className="text-xs text-zinc-400">
-                Create a fresh software blueprint and AI agent environment
+                Start with a blank canvas or an editable example
               </p>
             </div>
           </div>
@@ -329,7 +318,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           {/* Project Name */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-              Workspace Name
+              Project Name
             </label>
             <input
               type="text"
@@ -366,8 +355,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           {/* Template Selection */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-              Starting Architecture Blueprint
+              Optional Starter Diagram
             </label>
+            <p className="text-xs text-zinc-400">Examples are static diagrams and are not generated from your project files.</p>
             <div className="max-h-56 overflow-y-auto pr-1 space-y-2">
               {templates.map((t, idx) => {
                 const Icon = t.icon;
@@ -432,7 +422,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             className="px-5 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all active:scale-95 flex items-center gap-2"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create Workspace</span>
+            <span>Create Project</span>
           </button>
         </div>
       </div>

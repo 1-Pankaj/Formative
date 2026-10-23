@@ -9,7 +9,7 @@ import {
   Zap, 
   ArrowLeftRight, 
   Cpu, 
-  Crown, 
+  FolderOpen,
   Play, 
   Check, 
   HelpCircle,
@@ -104,7 +104,7 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
       <div className={`w-full max-w-4xl border rounded-2xl shadow-2xl flex flex-col h-[85vh] overflow-hidden ${
         isDark ? 'bg-[#09090b] border-[#27272a] text-[#fafafa]' : 'bg-[#ffffff] border-[#e4e4e7] text-[#09090b]'
       }`}>
@@ -117,11 +117,11 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
               <BookOpen className="w-4 h-4 text-blue-400" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white tracking-tight">
-                Formative Architecture & Agent Learning Center
+              <h3 className={`text-sm font-bold tracking-tight ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                Formative Canvas Guide
               </h3>
               <p className="text-xs text-zinc-400">
-                A visual, beginner-friendly guide to modern system architecture and autonomous agent orchestration.
+                A reference for project diagrams and the current transcript-inspection tools.
               </p>
             </div>
           </div>
@@ -139,18 +139,18 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
           isDark ? 'border-[#1f1f23] bg-[#09090b]' : 'border-[#e4e4e7] bg-[#f4f4f5]'
         }`}>
           {[
-            { id: 'basics', label: '1. Architecture 101' },
-            { id: 'components', label: '2. Component Breakdown' },
-            { id: 'wiring', label: '3. Connecting Nodes' },
-            { id: 'agents', label: '4. Agents & Org Chart' },
+            { id: 'basics', label: '1. Canvas basics' },
+            { id: 'components', label: '2. Components' },
+            { id: 'wiring', label: '3. Connecting nodes' },
+            { id: 'agents', label: '4. Projects & transcripts' },
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
               className={`py-3 px-3 border-b-2 font-semibold transition-all ${
                 activeTab === t.id
-                  ? 'border-white text-white'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                  ? isDark ? 'border-white text-white' : 'border-zinc-900 text-zinc-900'
+                  : isDark ? 'border-transparent text-zinc-500 hover:text-zinc-300' : 'border-transparent text-zinc-600 hover:text-zinc-900'
               }`}
             >
               {t.label}
@@ -164,12 +164,12 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
           {activeTab === 'basics' && (
             <div className="space-y-6 max-w-3xl">
               <div className="space-y-2">
-                <h4 className="text-base font-bold text-white flex items-center gap-2">
+                <h4 className={`text-base font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                   <Lightbulb className="w-4 h-4 text-amber-400" />
-                  <span>Why do we need an Architecture Map?</span>
+                  <span>What is the project canvas?</span>
                 </h4>
                 <p className="text-xs text-zinc-300 leading-relaxed font-sans">
-                  When you build software with AI agents (or human engineers), building without an architecture map is like building a skyscraper without blueprints. Code gets messy, functions duplicate, and AI agents get confused about where code lives.
+                  The canvas is a manual diagram for organizing parts of a project. A folder scan shows a limited sample of folder names; it does not discover or verify how the system works.
                 </p>
               </div>
 
@@ -181,7 +181,7 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
                   </div>
                   <h5 className="text-xs font-bold text-white">Visual Clarity</h5>
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Instantly see how your Frontend talks to your API Gateway, and how data safely flows into PostgreSQL or Redis.
+                    Add components and connect them to record the relationships you want to communicate. Formative does not verify those connections against code.
                   </p>
                 </div>
 
@@ -189,9 +189,9 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
                   <div className="w-7 h-7 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-xs">
                     2
                   </div>
-                  <h5 className="text-xs font-bold text-white">Single-Agent Harness</h5>
+                  <h5 className="text-xs font-bold text-white">Project tasks</h5>
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    The Chief Executive Agent orchestrates alone from the corner office, activating specialist skills on demand.
+                    Track tasks in a project. Tasks do not currently start or assign work to an agent.
                   </p>
                 </div>
 
@@ -199,9 +199,9 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
                   <div className="w-7 h-7 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xs">
                     3
                   </div>
-                  <h5 className="text-xs font-bold text-white">Zero-Token Telemetry</h5>
+                  <h5 className="text-xs font-bold text-white">Existing transcripts</h5>
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Reads local log files directly from disk (Claude Code, Antigravity, OpenCode) with zero API tokens consumed.
+                    Inspect supported JSON or JSONL transcripts. Watching a file does not launch or control its agent; the provider may have its own usage costs.
                   </p>
                 </div>
               </div>
@@ -209,8 +209,8 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
               {/* Next Step Action */}
               <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 flex items-center justify-between">
                 <div>
-                  <h5 className="text-xs font-semibold text-white">Ready to learn what each node does?</h5>
-                  <p className="text-[11px] text-zinc-400">Explore Frontend, API Gateway, Databases, and Queues.</p>
+                <h5 className="text-xs font-semibold text-white">Ready to add a component?</h5>
+                  <p className="text-[11px] text-zinc-400">Choose a project first, then place components on its canvas.</p>
                 </div>
                 <button
                   onClick={() => setActiveTab('components')}
@@ -227,7 +227,7 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
           {activeTab === 'components' && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <h4 className="text-base font-bold text-white">
+                <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                   Engineering Component Library
                 </h4>
                 <p className="text-xs text-zinc-400">
@@ -288,7 +288,7 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
           {activeTab === 'wiring' && (
             <div className="space-y-5 max-w-3xl">
               <div className="space-y-1">
-                <h4 className="text-base font-bold text-white">
+                <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                   How Connecting Nodes Works
                 </h4>
                 <p className="text-xs text-zinc-400">
@@ -330,33 +330,33 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
           {activeTab === 'agents' && (
             <div className="space-y-5 max-w-3xl">
               <div className="space-y-1">
-                <h4 className="text-base font-bold text-white">
-                  Single-Agent Orchestration & Org Chart
+                <h4 className={`text-base font-bold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                  Projects and transcript activity
                 </h4>
                 <p className="text-xs text-zinc-400">
-                  How Formative coordinates local AI agents without messy multi-agent token burn:
+                  Formative currently organizes project diagrams and tasks, and can inspect existing transcripts. Agent runs and multi-agent coordination are not available yet.
                 </p>
               </div>
 
               <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/70 space-y-3">
                 <div className="flex items-center gap-3 text-amber-400 font-bold text-sm">
-                  <Crown className="w-5 h-5" />
-                  <span>The CEO Agent (Chief Executive Agent)</span>
+                  <FolderOpen className="w-5 h-5" />
+                  <span>Choose a project first</span>
                 </div>
                 <p className="text-xs text-zinc-300 leading-relaxed">
-                  In Formative, you pair program with a primary orchestrator (the CEO). The CEO receives your prompt, formulates the execution plan, and coordinates specialized skills like Frontend, Backend, QA, and Database.
+                  Canvas, task, and transcript activity belong to a selected project. Choose or create a project before opening those areas. Existing transcripts can be inspected, but Formative does not send prompts or control the agent.
                 </p>
                 <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
                   <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
-                    <span className="font-semibold text-white block">Org Chart View</span>
+                    <span className="font-semibold text-white block">Tasks & Issues</span>
                     <p className="text-[11px] text-zinc-400 mt-1">
-                      See the clear hierarchy of your project roles (CEO, CTO, CMO, Engineers).
+                      Create and update local task records. Agent assignment becomes available when a real run integration exists.
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
-                    <span className="font-semibold text-white block">Operations Floor</span>
+                    <span className="font-semibold text-white block">Session Activity</span>
                     <p className="text-[11px] text-zinc-400 mt-1">
-                      Interactive 2D pixel studio floor where the CEO works at the corner desk.
+                      Open a supported JSON or JSONL transcript to review its recorded events.
                     </p>
                   </div>
                 </div>
@@ -370,13 +370,13 @@ export const InteractiveGuide: React.FC<InteractiveGuideProps> = ({
           isDark ? 'border-[#1f1f23] bg-[#0c0c0e]' : 'border-[#e4e4e7] bg-[#fafafa]'
         }`}>
           <span className="text-xs text-zinc-500">
-            Formative Open Source • Zero Token Cost
+            Open-source desktop app • Agent runs are not available yet
           </span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-md bg-white text-black font-semibold text-xs hover:bg-zinc-200 transition-colors shadow-sm"
           >
-            Got it, let's build!
+            Close guide
           </button>
         </div>
       </div>

@@ -4,7 +4,7 @@ export const SAMPLE_TEMPLATES: Project[] = [
   {
     id: 'template-web-fullstack',
     name: 'Full-Stack Web Platform',
-    description: 'Production web blueprint: React/Next.js frontend, API Gateway, PostgreSQL, and Redis cache.',
+    description: 'Static example diagram with a web client, API gateway, database, and cache.',
     type: 'web',
     updatedAt: new Date().toISOString(),
     nodes: [
@@ -70,7 +70,7 @@ export const SAMPLE_TEMPLATES: Project[] = [
   {
     id: 'template-microservices',
     name: 'Microservices & Event Mesh',
-    description: 'Cloud microservices blueprint: API Gateway, Auth Service, Kafka Event Bus, and Background Workers.',
+    description: 'Static example diagram with an API gateway, authentication service, event queue, and workers.',
     type: 'backend',
     updatedAt: new Date().toISOString(),
     nodes: [

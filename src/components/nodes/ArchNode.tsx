@@ -11,6 +11,7 @@ import {
   BrainCircuit, 
   Shield, 
   FileText,
+  Folder,
   Boxes
 } from 'lucide-react';
 import { ArchNodeData, NodeCategory, StepStatus } from '../../types';
@@ -33,6 +34,7 @@ const categoryIcons: Record<NodeCategory, React.ElementType> = {
   'auth': Shield,
   'service': Server,
   'note': FileText,
+  'folder': Folder,
 };
 
 const categoryLabels: Record<NodeCategory, string> = {
@@ -47,6 +49,7 @@ const categoryLabels: Record<NodeCategory, string> = {
   'auth': 'AUTH & POLICY',
   'service': 'SERVICE COMPONENT',
   'note': 'NOTE',
+  'folder': 'PROJECT FOLDER',
 };
 
 const statusStyles: Record<StepStatus, { label: string; dot: string; text: string }> = {

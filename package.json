@@ -1,7 +1,7 @@
 {
   "name": "formative",
   "version": "1.0.0",
-  "description": "Desktop Software Architecture Studio & Single-Agent Orchestration Canvas",
+  "description": "Desktop-first project workspace for diagrams, tasks, and agent transcript review",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {

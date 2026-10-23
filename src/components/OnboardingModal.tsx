@@ -98,7 +98,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   Welcome to Formative
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Formative is an architectural workspace for visualizing software system components, wiring dependencies, and observing single-agent CEO orchestration.
+                  Formative can map a small sample of project folders and inspect existing agent transcripts. It does not start agent runs yet.
                 </p>
               </div>
 
@@ -147,7 +147,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   How would you like to begin?
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Choose an intake mode for your architecture canvas.
+                  Choose a project to work in. Formative reads folder names only and does not run project code.
                 </p>
               </div>
 
@@ -167,7 +167,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   <div>
                     <h4 className="text-sm font-semibold">Open Existing Local Folder</h4>
                     <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                      Select any repo folder on your computer. Formative scans packages and directory structures to generate an initial architecture map.
+                      Select a folder to create a rough map from its top-level folders and files. The map is a starting point, not a dependency analysis.
                     </p>
                   </div>
                 </button>
@@ -185,9 +185,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold">Load Recommended Blueprint</h4>
+                    <h4 className="text-sm font-semibold">Open a Starter Example</h4>
                     <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                      Start with a pre-configured architecture template containing frontend, gateway, database, and cache nodes with clear relationships.
+                      Open a static diagram you can edit. It is not generated from your project.
                     </p>
                   </div>
                 </button>
@@ -220,18 +220,19 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div className="space-y-4">
               <div>
                 <h3 className="text-base font-semibold">
-                  Select AI Agent Provider
+                  Choose a Transcript Source (Optional)
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Formative can stream tool calls, file edits, and execution transcripts live directly from disk.
+                  Formative can inspect existing JSON or JSONL transcripts. It does not start agents or send prompts.
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 pt-2">
                 {[
                   { id: 'claude-code', title: 'Claude Code', desc: 'Anthropic Claude Code CLI assistant transcripts' },
-                  { id: 'antigravity', title: 'Antigravity / Gemini', desc: 'Google DeepMind Advanced Agentic Coding' },
-                  { id: 'opencode', title: 'OpenCode / Codex', desc: 'Open-source local coding agent runs' },
+                  { id: 'antigravity', title: 'Antigravity', desc: 'Read a saved Antigravity session transcript' },
+                  { id: 'opencode', title: 'OpenCode', desc: 'Read a saved OpenCode session transcript' },
+                  { id: 'custom', title: 'Custom Transcript', desc: 'Choose a JSON or JSONL transcript file' },
                   { id: 'none', title: 'Configure Later', desc: 'Use Formative as a visual architecture tool only' },
                 ].map((prov) => (
                   <div
@@ -267,32 +268,32 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                   Ready to Build
                 </h3>
                 <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                  Master the desktop workspace with these key shortcuts.
+                  Here is what works in the app today.
                 </p>
               </div>
 
               <div className="space-y-2.5 pt-2">
                 <div className={`p-3 rounded-lg border space-y-1.5 ${isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'}`}>
                   <span className="font-semibold text-zinc-400 uppercase text-xs tracking-wider block">
-                    Navigation
+                    Projects
                   </span>
                   <p className="text-xs text-zinc-300">
-                    • <strong>Pan:</strong> Space + Drag, or click-and-drag empty canvas.
+                    • <strong>Choose a project</strong> before opening its canvas, tasks, or session activity.
                   </p>
                   <p className="text-xs text-zinc-300">
-                    • <strong>Zoom:</strong> Ctrl + Mouse Wheel, or trackpad pinch.
+                    • <strong>Folder maps</strong> show a limited sample of folder names and files; they are not dependency analysis.
                   </p>
                 </div>
 
                 <div className={`p-3 rounded-lg border space-y-1.5 ${isDark ? 'border-[#27272a] bg-[#121215]' : 'border-zinc-200 bg-zinc-50'}`}>
                   <span className="font-semibold text-zinc-400 uppercase text-xs tracking-wider block">
-                    Organization & Layout
+                    Tasks and transcripts
                   </span>
                   <p className="text-xs text-zinc-300">
-                    • <strong>Tidy Layout:</strong> Automatically organizes overlapping nodes into a clean hierarchical tree.
+                    • <strong>Tasks</strong> are saved with the project and do not start an agent run.
                   </p>
                   <p className="text-xs text-zinc-300">
-                    • <strong>Fit View:</strong> Centers canvas view to all components.
+                    • <strong>Session Activity</strong> can inspect selected JSON or JSONL transcripts. It cannot send prompts or control an agent.
                   </p>
                 </div>
               </div>

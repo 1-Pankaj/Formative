@@ -17,6 +17,7 @@ import formativeLogo from '../assets/FormativeLogo.png';
 interface WelcomeScreenProps {
   theme: ThemeMode;
   projects: Project[];
+  hasActiveProject: boolean;
   onOpenProject: (id: string) => void;
   onScanDirectory: () => void;
   onNewProject: () => void;
@@ -29,6 +30,7 @@ interface WelcomeScreenProps {
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   theme,
   projects,
+  hasActiveProject,
   onOpenProject,
   onScanDirectory,
   onNewProject,
@@ -40,7 +42,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const isDark = theme !== 'light';
 
   return (
-    <div className={`flex-1 h-full overflow-y-auto px-8 py-10 select-none ${
+    <div className={`flex-1 h-full overflow-y-auto px-8 py-10 ${
       isDark ? 'bg-[#09090b] text-zinc-100' : 'bg-white text-zinc-900'
     }`}>
       <div className="max-w-4xl mx-auto space-y-8">
@@ -59,7 +61,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 Formative Studio
               </h1>
               <p className="text-sm text-zinc-400 mt-0.5">
-                Desktop Software Architecture & Single-Agent Orchestration
+                Projects, diagrams, tasks, and agent transcripts
               </p>
             </div>
           </div>
@@ -74,7 +76,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>Interactive Guide</span>
+              <span>Architecture Guide</span>
             </button>
 
             <button
@@ -82,18 +84,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New Workspace</span>
+              <span>New Project</span>
             </button>
           </div>
         </div>
 
         {/* 2-Column Desktop Setup Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Left Column: Recent Workspaces */}
+          {/* Left Column: Recent projects */}
           <div className="space-y-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-400">
-                Workspaces ({projects.length})
+                Projects ({projects.length})
               </span>
             </div>
 
@@ -105,17 +107,17 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   <Layers className="w-5 h-5" />
                 </div>
                 <p className="text-sm font-semibold">
-                  No active workspaces yet
+                  No projects yet
                 </p>
                 <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
-                  Open an existing project folder or create a fresh architecture canvas to get started.
+                  Open a project folder or start with a blank project or labeled example.
                 </p>
                 <div className="pt-2">
                   <button
                     onClick={onNewProject}
                     className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm"
                   >
-                    + Create First Workspace
+                    + Create First Project
                   </button>
                 </div>
               </div>
@@ -147,16 +149,21 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                           }`}>
                             {proj.type || 'system'}
                           </span>
+                          {proj.source && (
+                            <span className="text-[10px] font-mono uppercase text-zinc-500">
+                              {proj.source === 'folder-map' ? 'Folder map' : 'Example'}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-zinc-400 truncate mt-0.5 max-w-sm">
-                          {proj.description || `${proj.nodes?.length || 0} architecture components`}
+                          {proj.description || `${proj.nodes?.length || 0} canvas items`}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-zinc-500 font-mono">
-                        {proj.nodes?.length || 0} nodes
+                        {proj.nodes?.length || 0} {proj.source === 'folder-map' ? 'items' : 'components'}
                       </span>
                       {onDeleteProject && (
                         <button
@@ -168,7 +175,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                           className={`p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
                             isDark ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' : 'text-zinc-400 hover:text-red-600 hover:bg-zinc-100'
                           }`}
-                          title="Remove Workspace"
+                          title="Remove project"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -180,7 +187,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             )}
           </div>
 
-          {/* Right Column: Actions & Architecture Starters */}
+          {/* Right Column: Actions and starter examples */}
           <div className="space-y-6">
             {/* Start Section */}
             <div className="space-y-3">
@@ -204,13 +211,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     </div>
                     <div>
                       <div className="text-sm font-semibold">Open Local Folder...</div>
-                      <div className="text-xs text-zinc-400 mt-0.5">Scan a project or repo to map architecture automatically</div>
+                      <div className="text-xs text-zinc-400 mt-0.5">Create a limited folder map. It does not analyze dependencies.</div>
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-zinc-500">Ctrl+O</span>
                 </button>
 
-                {/* New Architecture Project */}
+                {/* New Project */}
                 <button
                   onClick={onNewProject}
                   className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
@@ -224,17 +230,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       <Plus className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold">New Architecture Workspace...</div>
-                      <div className="text-xs text-zinc-400 mt-0.5">Create a blank canvas to draft microservices and APIs</div>
+                      <div className="text-sm font-semibold">New Project...</div>
+                      <div className="text-xs text-zinc-400 mt-0.5">Start with a blank canvas or a labeled example</div>
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-zinc-500">Ctrl+N</span>
                 </button>
 
-                {/* Connect AI Agent */}
+                {/* Open saved agent activity after selecting a project */}
                 <button
+                  type="button"
+                  disabled={!hasActiveProject}
                   onClick={onOpenAiTelemetry}
-                  className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all ${
+                  title={hasActiveProject ? 'Inspect saved agent transcripts for this project' : 'Choose a project first'}
+                  className={`w-full flex items-center justify-between p-3.5 rounded-xl border text-left transition-all disabled:opacity-45 disabled:cursor-not-allowed ${
                     isDark
                       ? 'border-[#27272a] bg-[#121215] hover:border-zinc-500 hover:bg-[#18181c]'
                       : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400 hover:bg-white shadow-xs'
@@ -245,8 +253,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       <Bot className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold">AI Agent Console</div>
-                      <div className="text-xs text-zinc-400 mt-0.5">Stream live execution steps from Claude Code, Antigravity, or OpenCode</div>
+                      <div className="text-sm font-semibold">Session Activity</div>
+                      <div className="text-xs text-zinc-400 mt-0.5">{hasActiveProject ? 'Inspect a saved JSON or JSONL transcript. This does not start an agent.' : 'Choose a project first to inspect saved transcripts.'}</div>
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-zinc-500" />
@@ -254,10 +262,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               </div>
             </div>
 
-            {/* Architecture Starters */}
+            {/* Static starter diagrams */}
             <div className="space-y-3">
               <span className="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-400 block">
-                Reference Blueprints
+                Starter Examples
               </span>
 
               <div className={`p-4 rounded-xl border space-y-3 ${
@@ -266,13 +274,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-sm font-semibold">Full-Stack Web Platform</h4>
-                    <p className="text-xs text-zinc-400 mt-0.5">React/Next.js client, API Gateway, PostgreSQL, and Redis cache</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">A static sample diagram. It is not generated from a project.</p>
                   </div>
                   <button
                     onClick={() => onLoadTemplate()}
                     className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all shrink-0"
                   >
-                    Load Blueprint
+                    Open Example
                   </button>
                 </div>
               </div>

@@ -31,7 +31,7 @@ import { PaperclipCardNode } from './components/nodes/PaperclipCardNode';
 import { AgentStepNode } from './components/nodes/AgentStepNode';
 import { NoteNode } from './components/nodes/NoteNode';
 import { hierarchicalTreeLayout } from './utils/treeLayout';
-import { DEFAULT_PROJECTS, SAMPLE_TEMPLATES } from './data/defaultProjects';
+import { SAMPLE_TEMPLATES } from './data/defaultProjects';
 import { 
   Project, 
   ViewMode, 
@@ -69,14 +69,26 @@ declare global {
       scanProjectDirectory: (path: string) => Promise<{ success: boolean; project?: Project; error?: string }>;
       getSavedProjects: () => Promise<Project[] | null>;
       saveProjects: (projects: Project[]) => Promise<{ success: boolean; error?: string }>;
-      getAgentSessions: (providerId?: string) => Promise<AgentSession[]>;
-      readTranscript: (path: string) => Promise<any[]>;
-      startWatchingTranscript: (path: string) => Promise<{ success: boolean }>;
+      getAgentSessions: (providerId?: string) => Promise<{ success: boolean; sessions: AgentSession[]; error?: string }>;
+      readTranscript: (path: string) => Promise<{ success: boolean; steps?: AgentTranscriptStep[]; error?: string }>;
+      startWatchingTranscript: (path: string) => Promise<{ success: boolean; error?: string }>;
       stopWatchingTranscript: () => Promise<{ success: boolean }>;
-      onLiveTranscriptUpdate: (cb: (steps: any[]) => void) => () => void;
+      onLiveTranscriptUpdate: (cb: (steps: AgentTranscriptStep[]) => void) => () => void;
     };
   }
 }
+
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+interface ToastState {
+  text: string;
+  action?: ToastAction;
+}
+
+const createLocalId = (prefix: string) => `${prefix}-${globalThis.crypto.randomUUID()}`;
 
 export const App: React.FC = () => {
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -100,6 +112,15 @@ export const App: React.FC = () => {
     } catch (_) {}
     return [];
   });
+  const projectsRef = useRef<Project[]>(projects);
+  const [isProjectStoreReady, setIsProjectStoreReady] = useState(() => !window.formativeApi);
+  const [projectSaveState, setProjectSaveState] = useState<'saved' | 'saving' | 'error'>(() =>
+    window.formativeApi ? 'saving' : 'saved'
+  );
+  const [projectSaveError, setProjectSaveError] = useState<string | null>(null);
+  const projectSaveTimerRef = useRef<number | null>(null);
+  const projectSaveRevisionRef = useRef(0);
+  const toastTimerRef = useRef<number | null>(null);
 
   // Start on welcome screen unless an active project was explicitly cached
   const [activeProjectId, setActiveProjectId] = useState<string>(() => {
@@ -124,16 +145,17 @@ export const App: React.FC = () => {
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
 
   // AI Telemetry: NEVER connect automatically on startup!
-  const [isAiStreaming, setIsAiStreaming] = useState(false);
+  const [isTranscriptWatching, setIsTranscriptWatching] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude-code');
   const [sessions, setSessions] = useState<AgentSession[]>([]);
   const [activeSession, setActiveSession] = useState<AgentSession | null>(null);
   const [rawAgentSteps, setRawAgentSteps] = useState<AgentTranscriptStep[]>([]);
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<ToastState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
 
   const flowInstanceRef = useRef<any>(null);
+  const flowContainerRef = useRef<HTMLDivElement>(null);
 
   const activeProject = useMemo(
     () => (activeProjectId ? projects.find((p) => p.id === activeProjectId) || null : null),
@@ -142,6 +164,67 @@ export const App: React.FC = () => {
 
   const [nodes, setNodes, onNodesChange] = useNodesState(activeProject?.nodes || []);
   const [edges, setEdges, onEdgesChange] = useEdgesState(activeProject?.edges || []);
+  const [canvasProjectId, setCanvasProjectId] = useState<string | null>(null);
+
+  const writeProjectsToDisk = useCallback(async (snapshot: Project[]) => {
+    if (!window.formativeApi) return true;
+    const revision = ++projectSaveRevisionRef.current;
+    setProjectSaveState('saving');
+    setProjectSaveError(null);
+    try {
+      const result = await window.formativeApi.saveProjects(snapshot);
+      if (!result.success) throw new Error(result.error || 'Formative could not save project data.');
+      if (revision === projectSaveRevisionRef.current) setProjectSaveState('saved');
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Formative could not save project data.';
+      if (revision === projectSaveRevisionRef.current) {
+        setProjectSaveState('error');
+        setProjectSaveError(message);
+      }
+      return false;
+    }
+  }, []);
+
+  const persistProjects = useCallback((updatedProjects: Project[], immediate = false) => {
+    projectsRef.current = updatedProjects;
+    setProjects(updatedProjects);
+    let localCacheSaved = true;
+    try {
+      localStorage.setItem('formative_projects', JSON.stringify(updatedProjects));
+    } catch (error) {
+      localCacheSaved = false;
+      console.error('Unable to update the local project cache:', error);
+    }
+
+    if (!window.formativeApi) {
+      setProjectSaveState(localCacheSaved ? 'saved' : 'error');
+      setProjectSaveError(localCacheSaved ? null : 'The preview storage limit was reached.');
+      return Promise.resolve(localCacheSaved);
+    }
+
+    if (projectSaveTimerRef.current !== null) {
+      window.clearTimeout(projectSaveTimerRef.current);
+      projectSaveTimerRef.current = null;
+    }
+
+    if (immediate) return writeProjectsToDisk(updatedProjects);
+
+    setProjectSaveState('saving');
+    projectSaveTimerRef.current = window.setTimeout(() => {
+      projectSaveTimerRef.current = null;
+      void writeProjectsToDisk(projectsRef.current);
+    }, 350);
+    return Promise.resolve(true);
+  }, [writeProjectsToDisk]);
+
+  const flushPendingProjectSave = useCallback(() => {
+    if (projectSaveTimerRef.current !== null) {
+      window.clearTimeout(projectSaveTimerRef.current);
+      projectSaveTimerRef.current = null;
+    }
+    if (window.formativeApi) void writeProjectsToDisk(projectsRef.current);
+  }, [writeProjectsToDisk]);
 
   const nodeTypes = useMemo(
     () => ({
@@ -161,101 +244,204 @@ export const App: React.FC = () => {
     });
   };
 
-  const [standaloneSkills, setStandaloneSkills] = useState<SkillDepartment[]>(() => {
-    try {
-      const cached = localStorage.getItem('formative_standalone_skills');
-      if (cached) return JSON.parse(cached);
-    } catch (_) {}
-    return [];
-  });
+  const showToast = useCallback((msg: string, action?: ToastAction) => {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+    setToastMessage({ text: msg, action });
+    toastTimerRef.current = window.setTimeout(() => {
+      toastTimerRef.current = null;
+      setToastMessage(null);
+    }, action ? 5000 : 3000);
+  }, []);
 
   const activeSkills: SkillDepartment[] = useMemo(() => {
-    if (activeProject) {
-      return activeProject.officeConfig?.activeSkills || [];
-    }
-    return standaloneSkills;
-  }, [activeProject, standaloneSkills]);
+    return activeProject?.officeConfig?.activeSkills || [];
+  }, [activeProject]);
 
   const handleToggleSkill = useCallback((skill: SkillDepartment) => {
-    if (activeProject) {
-      const current = activeProject.officeConfig?.activeSkills || [];
-      const updatedSkills = current.includes(skill)
-        ? current.filter(s => s !== skill)
-        : [...current, skill];
-
-      const updatedProjects = projects.map(p => {
-        if (p.id === activeProject.id) {
-          return {
-            ...p,
-            officeConfig: {
-              ...p.officeConfig,
-              activeSkills: updatedSkills,
-            }
-          };
-        }
-        return p;
-      });
-
-      setProjects(updatedProjects);
-      localStorage.setItem('formative_projects', JSON.stringify(updatedProjects));
-      if (window.formativeApi) {
-        window.formativeApi.saveProjects(updatedProjects);
-      }
-      showToast(current.includes(skill) ? `Specialist skill unassigned.` : `Specialist skill activated!`);
-    } else {
-      setStandaloneSkills(prev => {
-        const next = prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill];
-        localStorage.setItem('formative_standalone_skills', JSON.stringify(next));
-        showToast(prev.includes(skill) ? `Specialist skill unassigned.` : `Specialist skill activated!`);
-        return next;
-      });
+    if (!activeProject) {
+      showToast('Choose a project before changing its office settings.');
+      return;
     }
-  }, [activeProject, projects]);
+    const current = activeProject.officeConfig?.activeSkills || [];
+    const updatedSkills = current.includes(skill)
+      ? current.filter(s => s !== skill)
+      : [...current, skill];
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2500);
-  };
+    const updatedProjects = projectsRef.current.map(p => p.id === activeProject.id
+      ? { ...p, officeConfig: { ...p.officeConfig, activeSkills: updatedSkills } }
+      : p
+    );
+    void persistProjects(updatedProjects, true);
+    showToast(current.includes(skill) ? 'Specialist skill unassigned.' : 'Specialist skill activated.');
+  }, [activeProject, persistProjects, showToast]);
 
   // Sync canvas with active project in Architecture mode
   useEffect(() => {
-    if (activeProject && viewMode === 'architecture') {
+    if (isProjectStoreReady && activeProject && viewMode === 'architecture') {
+      setCanvasProjectId(null);
       const projectNodes = activeProject.nodes || [];
       const projectEdges = activeProject.edges || [];
       setNodes(projectNodes);
       setEdges(projectEdges);
       setSelectedNodeId(null);
+      setCanvasProjectId(activeProject.id);
     }
-  }, [activeProjectId, viewMode]);
+  }, [activeProjectId, isProjectStoreReady, viewMode]);
 
-  // Load saved projects on startup
+  // The desktop store is authoritative. localStorage remains a recovery cache for preview/runtime failures.
   useEffect(() => {
+    let cancelled = false;
     const initData = async () => {
-      if (window.formativeApi) {
-        try {
-          const saved = await window.formativeApi.getSavedProjects();
-          if (saved && Array.isArray(saved)) {
-            setProjects(saved);
+      if (!window.formativeApi) {
+        setIsProjectStoreReady(true);
+        return;
+      }
+      try {
+        const saved = await window.formativeApi.getSavedProjects();
+        if (cancelled) return;
+        if (!Array.isArray(saved)) {
+          if (projectsRef.current.length > 0) {
+            setProjectSaveState('error');
+            setProjectSaveError('Recovered project data is available in the local cache, but the desktop project file could not be read.');
+          } else {
+            setProjectSaveState('saved');
+            setProjectSaveError(null);
           }
-        } catch (e) {
-          console.error('Init projects error:', e);
+          return;
         }
+        projectsRef.current = saved;
+        setProjects(saved);
+        setProjectSaveState('saved');
+        setProjectSaveError(null);
+        if (activeProjectId && !saved.some((project) => project.id === activeProjectId)) {
+          setActiveProjectId('');
+          setViewMode('welcome');
+          localStorage.removeItem('formative_active_project_id');
+        }
+      } catch (error) {
+        console.error('Unable to load saved projects:', error);
+        setProjectSaveState('error');
+        setProjectSaveError('Saved projects could not be loaded. Your local recovery copy is still available.');
+      } finally {
+        if (!cancelled) setIsProjectStoreReady(true);
       }
     };
 
-    initData();
+    void initData();
+    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const onBeforeUnload = () => flushPendingProjectSave();
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      flushPendingProjectSave();
+      if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+    };
+  }, [flushPendingProjectSave]);
+
+  useEffect(() => {
+    if (viewMode !== 'architecture') setCanvasProjectId(null);
+  }, [viewMode]);
+
+  // Keep the desktop project record in sync with canvas edits, even when the user never presses Save.
+  useEffect(() => {
+    if (!isProjectStoreReady || viewMode !== 'architecture' || !activeProject || canvasProjectId !== activeProject.id) return;
+    const sameCanvas = JSON.stringify({ nodes, edges }) === JSON.stringify({
+      nodes: activeProject.nodes || [],
+      edges: activeProject.edges || [],
+    });
+    if (sameCanvas) return;
+
+    const updatedProjects = projectsRef.current.map((project) => project.id === activeProject.id
+      ? { ...project, nodes, edges, updatedAt: new Date().toISOString() }
+      : project
+    );
+    void persistProjects(updatedProjects);
+  }, [activeProject, canvasProjectId, edges, isProjectStoreReady, nodes, persistProjects, viewMode]);
+
+  const flushCanvasChanges = useCallback(() => {
+    if (activeProjectId && viewMode === 'architecture') {
+      const updatedProjects = projectsRef.current.map((project) => project.id === activeProjectId
+        ? { ...project, nodes, edges, updatedAt: new Date().toISOString() }
+        : project
+      );
+      return persistProjects(updatedProjects, true);
+    }
+    flushPendingProjectSave();
+    return Promise.resolve(true);
+  }, [activeProjectId, edges, flushPendingProjectSave, nodes, persistProjects, viewMode]);
+
+  const clearActiveTranscript = useCallback(() => {
+    setActiveSession(null);
+    setIsTranscriptWatching(false);
+    setRawAgentSteps([]);
+    if (window.formativeApi) void window.formativeApi.stopWatchingTranscript();
+  }, []);
+
+  const selectProject = useCallback(async (id: string) => {
+    if (!projectsRef.current.some((project) => project.id === id)) return;
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent project changes could not be saved. Try again before switching.');
+      return;
+    }
+    if (activeProjectId !== id) clearActiveTranscript();
+    setActiveProjectId(id);
+    localStorage.setItem('formative_active_project_id', id);
+    setViewMode('architecture');
+  }, [activeProjectId, clearActiveTranscript, flushCanvasChanges, showToast]);
+
+  const requestViewMode = useCallback(async (mode: ViewMode) => {
+    if (mode === 'welcome') {
+      const saved = await flushCanvasChanges();
+      if (!saved) {
+        showToast('Recent project changes could not be saved. Try again before leaving.');
+        return;
+      }
+      setViewMode('welcome');
+      return;
+    }
+    if (!activeProject) {
+      setViewMode('welcome');
+      showToast('Choose a project before opening this area.');
+      return;
+    }
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent project changes could not be saved. Try again before switching.');
+      return;
+    }
+    setViewMode(mode);
+  }, [activeProject, flushCanvasChanges, showToast]);
 
   // Fetch provider sessions on demand
   const fetchProviderSessions = useCallback(async (provider: AgentProvider) => {
-    if (!window.formativeApi) return;
-    try {
-      const found = await window.formativeApi.getAgentSessions(provider);
-      setSessions(found || []);
-    } catch (e) {
-      console.error('Error fetching sessions:', e);
+    if (provider === 'custom') {
+      setSessions([]);
+      return;
     }
-  }, []);
+    if (!activeProject) {
+      setSessions([]);
+      showToast('Choose a project before looking for agent transcripts.');
+      return;
+    }
+    if (!window.formativeApi) {
+      setSessions([]);
+      showToast('Agent transcript discovery is available in the desktop app.');
+      return;
+    }
+    try {
+      const result = await window.formativeApi.getAgentSessions(provider);
+      setSessions(result.sessions || []);
+      if (!result.success) showToast(result.error || 'Formative could not find readable transcripts.');
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      setSessions([]);
+      showToast(error instanceof Error ? error.message : 'Formative could not find readable transcripts.');
+    }
+  }, [activeProject, showToast]);
 
   const handleChangeProvider = (provider: AgentProvider) => {
     setSelectedProvider(provider);
@@ -269,39 +455,70 @@ export const App: React.FC = () => {
   }, [viewMode, selectedProvider, activeSession, fetchProviderSessions]);
 
   const handleConnectSession = async (sess: AgentSession) => {
+    if (!activeProject) {
+      showToast('Choose a project before opening a transcript.');
+      return;
+    }
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent project changes could not be saved. Try again before switching.');
+      return;
+    }
     setActiveSession(sess);
-    setIsAiStreaming(true);
+    setIsTranscriptWatching(false);
+    setRawAgentSteps([]);
     setViewMode('agent-flow');
-    showToast(`Connected to ${sess.provider}.`);
+    showToast(`Opened ${sess.provider} transcript.`);
   };
 
   const handleDisconnectAi = () => {
     setActiveSession(null);
-    setIsAiStreaming(false);
+    setIsTranscriptWatching(false);
+    setRawAgentSteps([]);
     if (window.formativeApi) {
-      window.formativeApi.stopWatchingTranscript();
+      void window.formativeApi.stopWatchingTranscript();
     }
-    showToast('AI Agent disconnected.');
+    showToast('Transcript closed.');
   };
 
   useEffect(() => {
+    let cancelled = false;
     let cleanupWatcher: (() => void) | undefined;
 
     const streamSession = async () => {
-      if (!window.formativeApi || !activeSession) return;
+      if (!activeSession) return;
+      if (!window.formativeApi) {
+        setIsTranscriptWatching(false);
+        showToast('Transcript monitoring is available in the desktop app.');
+        return;
+      }
 
       try {
-        const steps = await window.formativeApi.readTranscript(activeSession.transcriptPath);
-        if (steps && Array.isArray(steps)) {
-          setRawAgentSteps(steps);
+        const response = await window.formativeApi.readTranscript(activeSession.transcriptPath);
+        if (cancelled) return;
+        if (!response.success) {
+          setIsTranscriptWatching(false);
+          showToast(response.error || 'This transcript could not be opened.');
+          return;
+        }
+        const steps = response.steps || [];
+        setRawAgentSteps(steps);
+        if (steps.length > 0) {
           if (viewMode === 'agent-flow') {
             transformStepsToNodes(steps, flowLayout);
           }
         }
 
-        await window.formativeApi.startWatchingTranscript(activeSession.transcriptPath);
+        const watchResult = await window.formativeApi.startWatchingTranscript(activeSession.transcriptPath);
+        if (cancelled) return;
+        if (!watchResult.success) {
+          setIsTranscriptWatching(false);
+          showToast(watchResult.error || 'Formative could not monitor this transcript.');
+          return;
+        }
+        setIsTranscriptWatching(true);
         cleanupWatcher = window.formativeApi.onLiveTranscriptUpdate((updatedSteps) => {
-          if (updatedSteps && Array.isArray(updatedSteps)) {
+          if (!cancelled && updatedSteps && Array.isArray(updatedSteps)) {
             setRawAgentSteps(updatedSteps);
             if (viewMode === 'agent-flow') {
               transformStepsToNodes(updatedSteps, flowLayout);
@@ -309,21 +526,30 @@ export const App: React.FC = () => {
           }
         });
       } catch (e) {
+        if (cancelled) return;
         console.error('Stream error:', e);
+        setIsTranscriptWatching(false);
+        showToast('Formative could not read this transcript.');
       }
     };
 
     streamSession();
 
     return () => {
+      cancelled = true;
       if (cleanupWatcher) cleanupWatcher();
-      if (window.formativeApi) window.formativeApi.stopWatchingTranscript();
+      setIsTranscriptWatching(false);
+      if (window.formativeApi) void window.formativeApi.stopWatchingTranscript();
     };
-  }, [viewMode, activeSession, flowLayout]);
+  }, [viewMode, activeSession, flowLayout, showToast]);
 
   const transformStepsToNodes = useCallback(
     (steps: AgentTranscriptStep[], layout: FlowLayout) => {
-      if (!steps || steps.length === 0) return;
+      if (!steps || steps.length === 0) {
+        setNodes([]);
+        setEdges([]);
+        return;
+      }
 
       const meaningful = steps.filter(
         (s) => s.type === 'USER_INPUT' || (s.type === 'PLANNER_RESPONSE' && s.tool_calls) || s.content
@@ -354,8 +580,6 @@ export const App: React.FC = () => {
 
         const isUser = step.type === 'USER_INPUT';
         const isTool = !!toolName;
-        const isLatest = idx === recent.length - 1;
-
         let posX = 100;
         let posY = 100;
 
@@ -378,7 +602,9 @@ export const App: React.FC = () => {
           posY = 80 + idx * 190;
         }
 
-        const cleanSummary = step.cleanContent || step.content || '';
+        const cleanSummary = typeof step.cleanContent === 'string'
+          ? step.cleanContent
+          : typeof step.content === 'string' ? step.content : '';
 
         newNodes.push({
           id,
@@ -387,7 +613,7 @@ export const App: React.FC = () => {
           data: {
             label: isUser ? 'User Instruction' : isTool ? `Tool: ${toolName}` : 'Agent Reasoning',
             stepIndex: step.step_index || idx + 1,
-            status: isLatest ? 'running' : step.status === 'ERROR' ? 'error' : 'done',
+            status: step.status === 'ERROR' ? 'error' : step.status === 'RUNNING' ? 'running' : 'done',
             toolUsed: toolName || undefined,
             argsPreview: argsPreview || undefined,
             thought: step.thinking || undefined,
@@ -401,8 +627,8 @@ export const App: React.FC = () => {
             id: `edge-${prevId}-${id}`,
             source: prevId,
             target: id,
-            animated: isLatest,
-            style: { stroke: isLatest ? '#ffffff' : '#52525b', strokeWidth: 1.5 },
+            animated: false,
+            style: { stroke: '#52525b', strokeWidth: 1.5 },
           });
         }
       });
@@ -414,190 +640,209 @@ export const App: React.FC = () => {
   );
 
   const handleScanDirectory = async (customPath?: unknown) => {
-    let targetPath = typeof customPath === 'string' ? customPath : undefined;
-
-    if (!targetPath && window.formativeApi) {
-      targetPath = (await window.formativeApi.selectDirectory()) || undefined;
+    if (!window.formativeApi) {
+      showToast('Choose a project folder in the desktop app to scan it.');
+      return;
     }
 
-    if (!targetPath) return;
+    try {
+      let targetPath = typeof customPath === 'string' ? customPath : undefined;
+      if (!targetPath) targetPath = (await window.formativeApi.selectDirectory()) || undefined;
+      if (!targetPath) return;
 
-    if (window.formativeApi) {
-      showToast(`Scanning: ${targetPath}...`);
+      showToast('Reading project files…');
       const res = await window.formativeApi.scanProjectDirectory(targetPath);
-      if (res.success && res.project) {
-        const newProj = res.project;
-        setProjects((prev) => {
-          const updated = [newProj, ...prev.filter((p) => p.id !== newProj.id)];
-          localStorage.setItem('formative_projects', JSON.stringify(updated));
-          if (window.formativeApi) {
-            window.formativeApi.saveProjects(updated);
-          }
-          return updated;
-        });
-        setActiveProjectId(newProj.id);
-        localStorage.setItem('formative_active_project_id', newProj.id);
-        setViewMode('architecture');
-        setIsLaunchpadOpen(false);
-        showToast(`Mapped ${newProj.nodes.length} components.`);
-      } else {
-        showToast(`Scan failed: ${res.error || 'Unknown error'}`);
+      if (!res.success || !res.project) {
+        showToast(res.error || 'Project scan failed.');
+        return;
       }
+
+      const newProject = res.project;
+      const saved = await flushCanvasChanges();
+      if (!saved) {
+        showToast('Recent project changes could not be saved. Try the scan again.');
+        return;
+      }
+      const existingProject = projectsRef.current.find((project) => project.id === newProject.id);
+      const projectToOpen = existingProject || newProject;
+      let persisted = true;
+      if (!existingProject) {
+        persisted = await persistProjects([newProject, ...projectsRef.current], true);
+      }
+      if (activeProjectId !== projectToOpen.id) clearActiveTranscript();
+      setActiveProjectId(projectToOpen.id);
+      localStorage.setItem('formative_active_project_id', projectToOpen.id);
+      setViewMode('architecture');
+      setIsLaunchpadOpen(false);
+      showToast(existingProject
+        ? `Opened ${existingProject.name}; saved canvas and tasks were kept.`
+        : persisted
+          ? `Created a limited folder map for ${newProject.name}. It is not a dependency analysis.`
+          : 'Project opened in recovery storage; desktop saving has a problem.');
+    } catch (error) {
+      console.error('Project scan failed:', error);
+      showToast(error instanceof Error ? error.message : 'Project scan failed.');
     }
   };
 
   const handleSelectCustomTranscript = async () => {
-    if (!window.formativeApi) return;
-    const file = await window.formativeApi.selectTranscriptFile();
-    if (file) {
+    if (!window.formativeApi) {
+      showToast('Transcript files can be opened in the desktop app.');
+      return;
+    }
+    if (!activeProject) {
+      showToast('Choose a project before opening a transcript.');
+      return;
+    }
+    try {
+      const file = await window.formativeApi.selectTranscriptFile();
+      if (!file) return;
       const customSession: AgentSession = {
         id: file,
-        title: `Custom File (${file.split(/[\\/]/).pop()})`,
+        title: `Transcript (${file.split(/[\\/]/).pop()})`,
         provider: 'Custom',
         transcriptPath: file,
         updatedAt: Date.now(),
-        lineCount: 1,
+        lineCount: 0,
       };
-      handleConnectSession(customSession);
+      await handleConnectSession(customSession);
       setIsLaunchpadOpen(false);
+    } catch (error) {
+      console.error('Transcript selection failed:', error);
+      showToast(error instanceof Error ? error.message : 'Transcript selection failed.');
     }
   };
 
-  const handleCreateBlankProject = (name: string, type: ProjectType) => {
+  const handleCreateBlankProject = async (name: string, type: ProjectType) => {
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent project changes could not be saved. Try again before creating a project.');
+      return;
+    }
     const newProj: Project = {
-      id: `proj-${Date.now()}`,
+      id: createLocalId('proj'),
       name,
-      description: 'Software architecture canvas',
+      description: 'Blank project',
       type,
       updatedAt: new Date().toISOString(),
-      nodes: [
-        {
-          id: 'root-1',
-          type: 'paperclipCard',
-          position: { x: 300, y: 160 },
-          data: {
-            label: `${name} Gateway`,
-            category: 'gateway',
-            subtitle: './src/gateway',
-            description: 'Main ingress and API gateway handling routing and security tokens.',
-            status: 'done',
-            tags: ['Gateway', 'API'],
-          },
-        },
-      ],
+      nodes: [],
       edges: [],
-      issues: [
-        {
-          id: `iss-${Date.now()}-1`,
-          key: 'TASK-1',
-          title: `Initial architecture design for ${name}`,
-          status: 'in_progress',
-          assignee: 'Chief Executive Agent',
-          assigneeInitials: 'CEO',
-          projectName: name,
-          projectColor: '#3b82f6',
-          isLive: true,
-          date: 'Today',
-          description: 'Establish initial system boundaries, ingress gateways, and database connections.'
-        }
-      ]
+      issues: [],
+      officeConfig: { activeSkills: [] },
     };
 
-    setProjects((prev) => {
-      const updated = [newProj, ...prev];
-      localStorage.setItem('formative_projects', JSON.stringify(updated));
-      if (window.formativeApi) {
-        window.formativeApi.saveProjects(updated);
-      }
-      return updated;
-    });
+    const persisted = await persistProjects([newProj, ...projectsRef.current], true);
+    clearActiveTranscript();
     setActiveProjectId(newProj.id);
     localStorage.setItem('formative_active_project_id', newProj.id);
     setViewMode('architecture');
-    showToast(`Created workspace: ${name}`);
+    showToast(persisted ? `Created project: ${name}` : 'Project created in recovery storage; desktop saving has a problem.');
   };
 
-  const handleCreateProject = (project: Project) => {
-    setProjects((prev) => {
-      const updated = [project, ...prev];
-      localStorage.setItem('formative_projects', JSON.stringify(updated));
-      if (window.formativeApi) {
-        window.formativeApi.saveProjects(updated);
-      }
-      return updated;
-    });
+  const handleCreateProject = async (project: Project) => {
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent project changes could not be saved. Try creating the project again.');
+      return;
+    }
+    const persisted = await persistProjects([project, ...projectsRef.current], true);
+    clearActiveTranscript();
     setActiveProjectId(project.id);
     localStorage.setItem('formative_active_project_id', project.id);
     setViewMode('architecture');
-    showToast(`Created workspace: ${project.name}`);
+    showToast(persisted ? `Created project: ${project.name}` : 'Project created in recovery storage; desktop saving has a problem.');
   };
 
-  const handleLoadTemplate = (template?: Project) => {
+  const handleLoadTemplate = async (template?: Project) => {
     const tmpl = template || SAMPLE_TEMPLATES[0];
-    const laidOutNodes = hierarchicalTreeLayout(tmpl.nodes, tmpl.edges);
+    const laidOutNodes = hierarchicalTreeLayout(tmpl.nodes.map((node) => ({
+      ...node,
+      data: { ...node.data, status: 'idle' },
+    })), tmpl.edges.map((edge) => ({ ...edge, animated: false })));
     const newProj: Project = {
       ...tmpl,
       nodes: laidOutNodes,
-      id: `proj-${Date.now()}`,
+      id: createLocalId('proj'),
+      source: 'starter-example',
       updatedAt: new Date().toISOString(),
+      issues: [],
     };
 
-    setProjects((prev) => {
-      const updated = [newProj, ...prev];
-      localStorage.setItem('formative_projects', JSON.stringify(updated));
-      if (window.formativeApi) {
-        window.formativeApi.saveProjects(updated);
-      }
-      return updated;
-    });
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent project changes could not be saved. Try again.');
+      return;
+    }
+    const persisted = await persistProjects([newProj, ...projectsRef.current], true);
+    clearActiveTranscript();
     setActiveProjectId(newProj.id);
     localStorage.setItem('formative_active_project_id', newProj.id);
     setViewMode('architecture');
-    showToast(`Loaded ${newProj.name} blueprint.`);
+    showToast(persisted ? `Opened the ${newProj.name} starter example.` : 'Example opened in recovery storage; desktop saving has a problem.');
   };
 
-  const handleDeleteProject = useCallback((id: string) => {
-    setProjects((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      localStorage.setItem('formative_projects', JSON.stringify(updated));
-      if (window.formativeApi) {
-        window.formativeApi.saveProjects(updated);
-      }
-      return updated;
-    });
-    setActiveProjectId((currentActive) => {
-      if (currentActive === id) {
-        localStorage.removeItem('formative_active_project_id');
-        setViewMode('welcome');
-        return '';
-      }
-      return currentActive;
-    });
-    showToast('Workspace removed.');
-  }, []);
+  const handleDeleteProject = useCallback(async (id: string) => {
+    const removed = projectsRef.current.find((project) => project.id === id);
+    if (!removed) return;
+    const confirmed = window.confirm(
+      `Remove “${removed.name}” from Formative? Its saved canvas and tasks will be removed from the app. Files in the project folder will not be deleted. You can undo for a few seconds.`
+    );
+    if (!confirmed) return;
 
-  const handleUpdateProjectIssues = useCallback((updatedIssues: IssueItem[]) => {
+    if (activeProjectId === id && !(await flushCanvasChanges())) {
+      showToast('Recent project changes could not be saved. The project was kept.');
+      return;
+    }
+    const updatedProjects = projectsRef.current.filter((project) => project.id !== id);
+    const saved = await persistProjects(updatedProjects, true);
+    if (!saved) {
+      await persistProjects([...projectsRef.current, removed], true);
+      showToast('Formative could not save the removal. The project was kept.');
+      return;
+    }
+    const wasActive = activeProjectId === id;
+    if (wasActive) {
+      setActiveProjectId('');
+      localStorage.removeItem('formative_active_project_id');
+      setViewMode('welcome');
+      setActiveSession(null);
+      setIsTranscriptWatching(false);
+    }
+
+    showToast('Project removed from Formative.', {
+      label: 'Undo',
+      onClick: () => {
+        void persistProjects([...projectsRef.current, removed], true);
+        if (wasActive) {
+          setActiveProjectId(removed.id);
+          localStorage.setItem('formative_active_project_id', removed.id);
+          setViewMode('architecture');
+        }
+        setToastMessage(null);
+      },
+    });
+  }, [activeProjectId, flushCanvasChanges, persistProjects, showToast]);
+
+  const handleUpdateProjectIssues = useCallback((updatedIssues: IssueItem[], nextTaskNumber?: number) => {
     if (!activeProject) return;
-    const updatedProjects = projects.map(p => {
+    const updatedProjects = projectsRef.current.map(p => {
       if (p.id === activeProject.id) {
         return {
           ...p,
-          issues: updatedIssues
+          issues: updatedIssues,
+          ...(typeof nextTaskNumber === 'number' ? { nextTaskNumber } : {}),
+          updatedAt: new Date().toISOString(),
         };
       }
       return p;
     });
-    setProjects(updatedProjects);
-    localStorage.setItem('formative_projects', JSON.stringify(updatedProjects));
-    if (window.formativeApi) {
-      window.formativeApi.saveProjects(updatedProjects);
-    }
-  }, [activeProject, projects]);
+    void persistProjects(updatedProjects, true);
+  }, [activeProject, persistProjects]);
 
   const handleSave = useCallback(async () => {
     if (!activeProject) return;
 
-    const updated = projects.map((p) => {
+    const updated = projectsRef.current.map((p) => {
       if (p.id === activeProjectId) {
         return {
           ...p,
@@ -609,15 +854,9 @@ export const App: React.FC = () => {
       return p;
     });
 
-    setProjects(updated);
-    localStorage.setItem('formative_projects', JSON.stringify(updated));
-
-    if (window.formativeApi) {
-      await window.formativeApi.saveProjects(updated);
-    }
-
-    showToast('Architecture saved to disk.');
-  }, [activeProject, activeProjectId, projects, nodes, edges]);
+    const saved = await persistProjects(updated, true);
+    showToast(saved ? 'Project saved.' : 'Formative could not save this project.');
+  }, [activeProject, activeProjectId, edges, nodes, persistProjects, showToast]);
 
   // Hierarchical Auto-Layout using Paperclip's exact recursive algorithm
   const handleAutoLayout = useCallback(() => {
@@ -634,17 +873,41 @@ export const App: React.FC = () => {
   }, []);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: false }, eds)),
     [setEdges]
   );
 
   const handleAddNode = useCallback(
-    (category: NodeCategory, x = 300, y = 200) => {
+    (category: NodeCategory, screenX?: number, screenY?: number) => {
+      if (!activeProject) {
+        showToast('Choose a project before editing the canvas.');
+        return;
+      }
+      const bounds = flowContainerRef.current?.getBoundingClientRect();
+      const screenPoint = typeof screenX === 'number' && typeof screenY === 'number'
+        ? { x: screenX, y: screenY }
+        : bounds
+          ? { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 }
+          : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+      const base = flowInstanceRef.current?.screenToFlowPosition(screenPoint) || { x: 300, y: 200 };
+      let position = base;
+      for (let attempt = 0; attempt < 250; attempt += 1) {
+        const column = attempt % 5;
+        const row = Math.floor(attempt / 5);
+        const candidate = { x: base.x + column * 300, y: base.y + row * 190 };
+        const overlaps = nodes.some((node) =>
+          Math.abs(node.position.x - candidate.x) < 280 && Math.abs(node.position.y - candidate.y) < 170
+        );
+        if (!overlaps) {
+          position = candidate;
+          break;
+        }
+      }
       const id = `node-${Date.now()}`;
       const newNode: Node = {
         id,
         type: category === 'note' ? 'noteNode' : 'paperclipCard',
-        position: { x, y },
+        position,
         data: {
           label: `New ${category.charAt(0).toUpperCase() + category.slice(1)}`,
           category,
@@ -658,7 +921,7 @@ export const App: React.FC = () => {
       setNodes((nds) => [...nds, newNode]);
       setSelectedNodeId(id);
     },
-    [setNodes]
+    [activeProject, nodes, setNodes, showToast]
   );
 
   const handleDuplicateNode = useCallback(
@@ -751,7 +1014,7 @@ export const App: React.FC = () => {
   const isDark = theme !== 'light';
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden font-sans select-none theme-${theme} ${
+    <div className={`flex h-screen w-screen overflow-hidden font-sans theme-${theme} ${
       isDark ? 'bg-[#09090b] text-zinc-100' : 'bg-[#ffffff] text-zinc-900'
     }`}>
       {/* 1. DUAL-RAIL LEFT NAVIGATION (Paperclip Shell) */}
@@ -760,48 +1023,44 @@ export const App: React.FC = () => {
         onToggleTheme={toggleTheme}
         projects={projects}
         activeProject={activeProject}
-        onSelectProject={(id) => {
-          setActiveProjectId(id);
-          localStorage.setItem('formative_active_project_id', id);
-          setViewMode('architecture');
-        }}
+        onSelectProject={selectProject}
         onOpenNewProject={() => setIsNewProjectOpen(true)}
         viewMode={viewMode}
-        onChangeViewMode={(mode) => setViewMode(mode)}
+        onChangeViewMode={requestViewMode}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenLaunchpad={() => setIsLaunchpadOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        isAiStreaming={isAiStreaming}
+        isTranscriptWatching={isTranscriptWatching}
         activeSkills={activeSkills}
-        onOpenSkills={() => setIsLaunchpadOpen(true)}
+        onOpenSkills={() => { void requestViewMode('operations-floor'); }}
       />
 
       {/* 2. MAIN WORKSPACE FRAME */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Paperclip Top Header Bar */}
-        <header className={`h-12 border-b px-5 flex items-center justify-between shrink-0 select-none z-20 ${
+        <header className={`h-12 border-b px-3 xl:px-5 flex items-center justify-between gap-2 shrink-0 select-none z-20 ${
           isDark ? 'bg-[#09090b] border-[#27272a] text-zinc-300' : 'bg-white border-zinc-200 text-zinc-800'
         }`}>
           {/* Left: Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs">
             <button
-              onClick={() => setViewMode('welcome')}
-              className="font-medium hover:text-white transition-colors text-zinc-400"
+              onClick={() => { void requestViewMode('welcome'); }}
+              className={`font-medium transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
             >
               {activeProject ? activeProject.name : 'Formative'}
             </button>
             <span className="text-zinc-600">/</span>
-            <span className={`font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+        <span className={`font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
               {viewMode === 'architecture'
-                ? 'Architecture Canvas'
+                ? (activeProject?.source === 'folder-map' ? 'Folder Map' : 'Project Canvas')
                 : viewMode === 'org-chart'
-                ? 'Org Chart'
+                ? 'Agent Team'
                 : viewMode === 'issues'
                 ? 'Tasks & Issues'
                 : viewMode === 'operations-floor'
-                ? 'CEO Office Floor'
+                ? 'Office Floor'
                 : viewMode === 'agent-flow'
-                ? 'AI Agent Console'
+                ? 'Session Activity'
                 : 'Welcome'}
             </span>
           </div>
@@ -812,16 +1071,16 @@ export const App: React.FC = () => {
               <>
                 <button
                   onClick={handleAutoLayout}
-                  title="Align architecture into a non-overlapping tree layout"
+                  title="Arrange the canvas into a tree layout"
                   className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
                 >
                   <Network className="w-3.5 h-3.5" />
-                  <span>Tidy Layout</span>
+                  <span>Arrange</span>
                 </button>
 
                 <button
                   onClick={handleFitView}
-                  title="Fit view to all components"
+                  title="Fit the view to all canvas items"
                   className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
                     isDark ? 'bg-[#18181c] border-[#27272a] text-zinc-300 hover:text-white hover:bg-zinc-800' : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200'
                   }`}
@@ -848,8 +1107,20 @@ export const App: React.FC = () => {
                 isDark ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
               }`}>
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>Single-Agent CEO Orchestrator</span>
+                <span>Project organization</span>
               </div>
+            )}
+
+            {viewMode === 'agent-flow' && activeSession && (
+              <button
+                type="button"
+                onClick={handleDisconnectAi}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs transition-colors ${
+                  isDark ? 'bg-[#18181c] border-[#27272a] text-zinc-300 hover:text-white hover:bg-zinc-800' : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200'
+                }`}
+              >
+                Close transcript
+              </button>
             )}
 
             {/* Quick Guide Button */}
@@ -868,18 +1139,27 @@ export const App: React.FC = () => {
 
         {/* Floating Status Notification */}
         {toastMessage && (
-          <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-lg border text-xs font-mono shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+          <div role="status" aria-live="polite" className={`absolute bottom-9 left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-lg border text-xs font-mono shadow-xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-150 ${
             isDark ? 'bg-[#18181c] border-[#27272a] text-white' : 'bg-white border-zinc-300 text-black'
           }`}>
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>{toastMessage}</span>
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${projectSaveState === 'error' ? 'bg-red-400' : 'bg-zinc-400'}`} />
+            <span>{toastMessage.text}</span>
+            {toastMessage.action && (
+              <button
+                type="button"
+                onClick={toastMessage.action.onClick}
+                className={`font-semibold underline underline-offset-2 ${isDark ? 'text-white' : 'text-zinc-900'}`}
+              >
+                {toastMessage.action.label}
+              </button>
+            )}
           </div>
         )}
 
         {/* Main Viewport Content */}
         <div className="flex-1 overflow-hidden relative flex flex-col min-h-0 min-w-0">
           {viewMode === 'org-chart' ? (
-            <OrgChartView theme={theme} onOpenSkills={() => setIsLaunchpadOpen(true)} />
+            <OrgChartView theme={theme} onOpenSessionActivity={() => { void requestViewMode('agent-flow'); }} />
           ) : viewMode === 'issues' ? (
             <IssuesView 
               theme={theme} 
@@ -890,16 +1170,11 @@ export const App: React.FC = () => {
             <WelcomeScreen
               theme={theme}
               projects={projects}
-              onOpenProject={(id) => {
-                setActiveProjectId(id);
-                localStorage.setItem('formative_active_project_id', id);
-                setViewMode('architecture');
-              }}
+              hasActiveProject={Boolean(activeProject)}
+              onOpenProject={selectProject}
               onScanDirectory={handleScanDirectory}
               onNewProject={() => setIsNewProjectOpen(true)}
-              onOpenAiTelemetry={() => {
-                setViewMode('agent-flow');
-              }}
+              onOpenAiTelemetry={() => { void requestViewMode('agent-flow'); }}
               onLoadTemplate={handleLoadTemplate}
               onOpenOnboarding={() => setIsOnboardingOpen(true)}
               onDeleteProject={handleDeleteProject}
@@ -908,7 +1183,7 @@ export const App: React.FC = () => {
             <OfficeFloorView
               theme={theme}
               latestStep={rawAgentSteps.length > 0 ? rawAgentSteps[rawAgentSteps.length - 1] : undefined}
-              isAiStreaming={isAiStreaming}
+              isAiStreaming={false}
               layoutTheme="studio"
               activeSkills={activeSkills}
               onToggleSkill={handleToggleSkill}
@@ -924,27 +1199,31 @@ export const App: React.FC = () => {
               onSelectCustomFile={handleSelectCustomTranscript}
             />
           ) : (
-            /* Interactive ReactFlow Architecture Canvas */
+            /* Project canvas, or read-only transcript map */
             <div className="flex flex-1 w-full h-full min-h-0 min-w-0 overflow-hidden relative">
-              <Sidebar
-                theme={theme}
-                onAddNode={(cat) => handleAddNode(cat)}
-                nodeCount={nodes.length}
-                edgeCount={edges.length}
-              />
+              {viewMode === 'architecture' && (
+                <Sidebar
+                  theme={theme}
+                  onAddNode={(cat) => handleAddNode(cat)}
+                  nodeCount={nodes.length}
+                  edgeCount={edges.length}
+                />
+              )}
 
-              <div className="flex-1 w-full h-full min-h-0 min-w-0 relative">
+              <div ref={flowContainerRef} className="flex-1 w-full h-full min-h-0 min-w-0 relative">
                 <ReactFlow
                   nodes={nodes}
                   edges={edges}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
-                  onConnect={onConnect}
+                  onConnect={viewMode === 'architecture' ? onConnect : undefined}
                   nodeTypes={nodeTypes}
                   onNodeClick={(_, node) => setSelectedNodeId(node.id)}
                   onPaneClick={() => setSelectedNodeId(null)}
-                  onPaneContextMenu={onPaneContextMenu}
-                  onNodeContextMenu={onNodeContextMenu}
+                  onPaneContextMenu={viewMode === 'architecture' ? onPaneContextMenu : undefined}
+                  onNodeContextMenu={viewMode === 'architecture' ? onNodeContextMenu : undefined}
+                  nodesDraggable={viewMode === 'architecture'}
+                  nodesConnectable={viewMode === 'architecture'}
                   onInit={(instance) => {
                     flowInstanceRef.current = instance;
                   }}
@@ -952,7 +1231,7 @@ export const App: React.FC = () => {
                   minZoom={0.2}
                   maxZoom={2}
                   defaultEdgeOptions={{
-                    animated: true,
+                    animated: false,
                     style: { stroke: isDark ? '#3f3f46' : '#d4d4d8', strokeWidth: 1.5 },
                   }}
                 >
@@ -973,12 +1252,12 @@ export const App: React.FC = () => {
                       {viewMode === 'architecture' ? (
                         <>
                           <Layers className="w-3.5 h-3.5 text-blue-400" />
-                          <span>ARCH: {activeProject?.name || 'Untitled'} ({nodes.length} Components)</span>
+                          <span>{activeProject?.source === 'folder-map' ? 'FOLDER MAP' : 'PROJECT CANVAS'}: {activeProject?.name || 'Untitled'} ({nodes.length} items)</span>
                         </>
                       ) : (
                         <>
                           <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>CONSOLE: {activeSession?.provider || 'Agent'} ({nodes.length} Steps)</span>
+                          <span>TRANSCRIPT: {activeSession?.provider || 'Transcript'} ({nodes.length} events)</span>
                         </>
                       )}
                     </div>
@@ -986,7 +1265,7 @@ export const App: React.FC = () => {
                 </ReactFlow>
               </div>
 
-              {selectedNode && (
+              {viewMode === 'architecture' && selectedNode && (
                 <Inspector
                   theme={theme}
                   selectedNode={selectedNode}
@@ -1006,7 +1285,7 @@ export const App: React.FC = () => {
             y={contextMenu.y}
             nodeId={contextMenu.nodeId}
             onClose={() => setContextMenu(null)}
-            onAddNode={(cat, px, py) => handleAddNode(cat, px - 100, py - 60)}
+            onAddNode={(cat, px, py) => handleAddNode(cat, px + 220, py + 24)}
             onDuplicateNode={handleDuplicateNode}
             onDeleteNode={handleDeleteNode}
             onDisconnectNode={handleDisconnectNode}
@@ -1023,7 +1302,7 @@ export const App: React.FC = () => {
           onSpawnComponent={(category) => {
             handleAddNode(category);
             setIsGuideOpen(false);
-            setViewMode('architecture');
+            void requestViewMode('architecture');
           }}
         />
 
@@ -1031,13 +1310,15 @@ export const App: React.FC = () => {
         <OnboardingModal
           theme={theme}
           isOpen={isOnboardingOpen}
-          onClose={() => setIsOnboardingOpen(false)}
+          onClose={() => {
+            try { localStorage.setItem('formative_onboarded', 'true'); } catch {}
+            setIsOnboardingOpen(false);
+          }}
           onScanDirectory={handleScanDirectory}
           onCreateBlank={handleCreateBlankProject}
           onLoadTemplate={handleLoadTemplate}
           onSelectProvider={(prov) => {
             setSelectedProvider(prov);
-            fetchProviderSessions(prov);
           }}
         />
 
@@ -1073,44 +1354,33 @@ export const App: React.FC = () => {
           onSelectCustomTranscript={handleSelectCustomTranscript}
           projects={projects}
           activeProjectId={activeProjectId}
-          onSelectProject={(id) => {
-            setActiveProjectId(id);
-            localStorage.setItem('formative_active_project_id', id);
-            setViewMode('architecture');
-          }}
+          onSelectProject={selectProject}
           onCreateBlankProject={handleCreateBlankProject}
           onDeleteProject={handleDeleteProject}
           onLoadTemplate={handleLoadTemplate}
         />
 
         {/* Desktop Application Bottom Status Bar */}
-        <footer className={`h-6 border-t px-4 flex items-center justify-between text-xs font-mono select-none z-30 shrink-0 ${
+        <footer className={`h-7 border-t px-2.5 xl:px-4 flex items-center justify-between gap-3 text-[10px] xl:text-xs font-mono select-none z-30 shrink-0 min-w-0 ${
           isDark ? 'bg-[#0c0c0e] border-[#27272a] text-zinc-500' : 'bg-[#fafafa] border-zinc-200 text-zinc-600'
         }`}>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${activeProject ? 'bg-emerald-400' : 'bg-neutral-500'}`} />
-              <span className={activeProject ? (isDark ? 'text-zinc-300' : 'text-black') : ''}>
-                {activeProject ? activeProject.name : 'No workspace open'}
-              </span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${activeProject ? 'bg-emerald-400' : 'bg-neutral-500'}`} />
+            <span className={`truncate max-w-[28vw] ${activeProject ? (isDark ? 'text-zinc-300' : 'text-black') : ''}`}>
+              {activeProject ? activeProject.name : 'Choose a project'}
             </span>
-            {activeProject && (
-              <>
-                <span>•</span>
-                <span>{nodes.length} nodes</span>
-                <span>•</span>
-                <span>{edges.length} wires</span>
-              </>
-            )}
+            {activeProject && <span className="hidden xl:inline shrink-0">{nodes.length} {activeProject.source === 'folder-map' ? 'items' : 'components'} · {edges.length} connections</span>}
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isAiStreaming ? 'bg-emerald-400' : 'bg-neutral-500'}`} />
-              <span>Agent Console: {isAiStreaming ? (activeSession?.provider || 'Active') : 'Ready'}</span>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <span title={projectSaveError || undefined} className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${projectSaveState === 'error' ? 'bg-red-400' : projectSaveState === 'saving' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+              <span>{!isProjectStoreReady ? 'Loading projects' : projectSaveState === 'error' ? 'Save issue' : projectSaveState === 'saving' ? 'Saving' : window.formativeApi ? 'Saved' : 'Preview storage'}</span>
             </span>
-            <span>•</span>
-            <span>Paperclip Engine</span>
+            <span className="hidden sm:inline text-zinc-400">
+              {activeSession ? isTranscriptWatching ? 'Watching transcript' : 'Transcript selected' : 'No transcript selected'}
+            </span>
+            <span className="hidden 2xl:inline border-l border-zinc-700 pl-2 text-zinc-500">Agent runs unavailable</span>
           </div>
         </footer>
       </div>

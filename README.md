@@ -2,129 +2,98 @@
 
 # Formative Studio
 
-**Desktop Software Architecture Studio & Single-Agent Orchestration Canvas**
+**A desktop-first project workspace for diagrams, tasks, and agent transcript review**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Web-black.svg?style=flat-square)](#quick-start)
+[![Platform](https://img.shields.io/badge/Platform-Desktop-black.svg?style=flat-square)](#quick-start)
 [![Built With](https://img.shields.io/badge/Stack-React%2019%20%7C%20TypeScript%20%7C%20Electron%2035-black.svg?style=flat-square)](#tech-stack)
-
-*An engineering-grade architecture studio and real-time AI execution stream designed for autonomous workflows, microservice mapping, and local agent orchestration.*
 
 </div>
 
 ---
 
-## ✦ Overview
+## What Formative does today
 
-**Formative** is an open-source visual architecture studio and single-agent telemetry environment built with the high-contrast **Paperclip design system**. It bridges software architecture blueprints with live agent tool execution, allowing engineers to visualize distributed systems, map local repositories, track real issues, and watch coding agents execute in real time with **zero extra API costs**.
+Formative is an open-source desktop application for keeping project diagrams, tasks, and selected agent transcripts together. It is in an early foundation phase. It does **not** send prompts to an agent, start or stop agent runs, coordinate multiple agents, or report token savings.
 
----
+### Projects and diagrams
 
-## ⚡ Key Capabilities
+- Create a blank project, open a local folder, or choose a clearly labeled static starter example.
+- Edit a project canvas and save its nodes and connections with the project.
+- Opening a folder creates a limited folder map. The scanner samples up to 500 top-level entries and shows up to nine folders, with a small sample of each folder’s entries. It checks a few root-level marker files, but does not analyze dependencies, inspect arbitrary source code, or run project code.
 
-### 1. Visual Architecture Canvas
-- **Paperclip Design Language**: Pitch-black (`#09090b`) dark mode and crisp slate light mode with high-contrast UI controls.
-- **Hierarchical Layout Engine**: Clean tree auto-layout (`treeLayout.ts`) and orthogonal step connectors.
-- **7 Starter Blueprints**:
-  - Full-Stack Web Platform (Next.js, Fastify API Gateway, PostgreSQL, Redis Cache)
-  - AI Agent Autonomous Workflow (Goal Intake, Code Graph, Tool Sandbox, Verification Critic)
-  - Microservices & Event-Driven Cloud (Edge CDN, Auth Service, Orders Service, Kafka Bus)
-  - Mobile & Cross-Platform Engine (React Native, GraphQL Gateway, Lambda Workers, DynamoDB)
-  - Real-Time Collaborative System (Canvas Client, WebSocket Signaling, CRDT Sync Engine)
-  - Data Pipeline & Vector Lakehouse (Ingestion API, Embedding Worker, Vector DB)
-  - Blank Canvas (Clean slate for custom microservices)
+### Tasks
 
-### 2. Local AI Agent Telemetry & Console
-- **Multi-Agent Connectivity**: Connects directly to local session logs for:
-  - **Google Antigravity** (`~/.gemini/antigravity/brain/`)
-  - **Claude Code** (`~/.claude/projects/`)
-  - **OpenCode & Codex** (`~/.opencode/`, `~/.openhands/`)
-- **Real-Time Step Streaming**: Displays prompts, internal thoughts, tool calls, and execution status live as your agent executes.
-- **100% Offline & Private**: Reads only from your local filesystem. Zero external telemetry or secret leakage.
+- Create and update task records inside a selected project.
+- Task records are stored locally with the project. They do not start an agent run, and agent assignment is not available yet.
 
-### 3. Local Project Directory Scanner
-- Open any local repository (`Ctrl+O`) to automatically analyze directories, package configurations (`package.json`, `requirements.txt`, Dockerfiles), and construct an interactive component map with attached verification tasks.
+### Existing transcript review
 
-### 4. Real Issues & Roadmap Tracking
-- Persistent workspace tasks with statuses (`To Do`, `In Progress`, `Blocked`, `Completed`), assignment roles, and discussion comments stored directly alongside workspace configurations.
+- Open JSON or JSONL transcript files, or look for readable transcripts in the local Claude Code, OpenCode, and Antigravity locations currently supported by the app.
+- Formative reads and can watch the selected file for changes. It does not connect to, prompt, start, or control the agent that produced it.
+- The transcript picker does not currently support TXT, LOG, or Markdown files. Codex, OpenClaw, Ollama, Kiro, API-key connections, and MCP connections are product directions, not working integrations today.
+- Transcript contents and paths can be sensitive. The user chooses which transcript file to open.
 
-### 5. Interactive Org Chart & Virtual Office Floor
-- **Org Chart**: Visual hierarchy mapping single-agent roles and specialist abilities (Frontend, Backend, Systems/DevOps, Database Architecture).
-- **CEO Office Floor**: 2D PixiJS office simulation showing agent movement and arrival routines.
+### Project office
 
----
+The existing 2D pixel office is a visual simulation. It is not connected to a real agent run. The office experience is being kept separate from the current project-workflow changes.
 
-## 🚀 Quick Start
+## Privacy and costs
+
+The desktop app works with local project folders and transcript files selected or discovered on the user’s device. It does not currently call hosted model APIs. Local or hosted agent providers may use their own network connections and may charge for their services; Formative does not claim that using those providers is free or that it saves tokens.
+
+Project records are saved in Formative’s local app data, with a browser-storage recovery copy. The browser preview has no Electron file-access bridge, so folder scanning and transcript import require the desktop app.
+
+## Quick start
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- [npm](https://www.npmjs.com/) or [pnpm](https://pnpm.io/)
 
-### Installation
+- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- npm
+
+### Install
+
+Install dependencies in the project folder:
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/formative.git
-cd formative
-
-# Install dependencies
 npm install
 ```
 
-### Running the Application
+### Run the desktop app
 
-#### Option A: Windows Desktop App (Electron)
 ```bash
-# Launch in desktop mode
 npm run desktop
-
-# Or use the 1-click batch launcher
-Launch-Formative.bat
 ```
 
-#### Option B: Browser Web Studio (Localhost)
+This command type-checks the app, builds the desktop UI, and launches Electron. Packaged Windows targets can be created with the commands below.
+
+### Browser development preview
+
 ```bash
-# Launch the Vite dev server
 npm run dev
-
-# Or use the 1-click batch launcher
-Launch-Web.bat
 ```
 
-### Building Standalone Executables
-```bash
-# Build unpacked Windows folder (build-release/win-unpacked/Formative.exe)
-npm run dist:dir
+The Vite preview is for UI development. It does not provide desktop file scanning or transcript import.
 
-# Build single-file portable Windows executable (build-release/Formative 1.0.0.exe)
+### Build Windows packages
+
+```bash
+npm run dist:dir
 npm run dist:portable
 ```
 
----
+## Canvas controls
 
-## ⌨️ Shortcuts & Navigation
+The project canvas uses React Flow interactions: scroll to zoom, drag the canvas to pan, drag nodes to reposition them, and connect node handles to create a relationship. These connections are user-authored diagram lines; Formative does not verify them against project code.
 
-| Shortcut | Action |
-| :--- | :--- |
-| `Ctrl + O` | Open & Scan Local Project Folder |
-| `Ctrl + N` | Create New Architecture Workspace |
-| `Spacebar + Drag` | Pan Architecture Canvas |
-| `Mouse Wheel` | Zoom In / Out (`0.2x` – `2.0x`) |
-| `Click + Drag` | Box Multi-Select Components |
-| `Escape` | Close Open Modals & Dialogs |
+## Tech stack
 
----
+- **UI:** [React 19](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/)
+- **Bundler:** [Vite 6](https://vitejs.dev/)
+- **Canvas:** [@xyflow/react](https://reactflow.dev/) and [PixiJS v8](https://pixijs.com/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/) and [Lucide](https://lucide.dev/)
+- **Desktop runtime:** [Electron 35](https://www.electronjs.org/) and [Electron Builder](https://www.electron.build/)
 
-## 🛠️ Tech Stack
+## License
 
-- **UI Framework:** [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- **Bundler & Tooling:** [Vite 6](https://vitejs.dev/)
-- **Canvas Engine:** [@xyflow/react](https://reactflow.dev/) (React Flow v12) + [PixiJS v8](https://pixijs.com/)
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/) + [Lucide Icons](https://lucide.dev/)
-- **Desktop Runtime:** [Electron 35](https://www.electronjs.org/) + [Electron Builder](https://www.electron.build/)
-
----
-
-## 📄 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.

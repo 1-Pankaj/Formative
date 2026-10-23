@@ -22,6 +22,7 @@ const categories: Array<{ id: NodeCategory; label: string }> = [
   { id: 'auth', label: 'Auth & Policy Security' },
   { id: 'service', label: 'General Service' },
   { id: 'note', label: 'Architecture Memo / ADR' },
+  { id: 'folder', label: 'Project Folder' },
 ];
 
 const statuses: Array<{ id: StepStatus; label: string }> = [
@@ -45,7 +46,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   const isDark = theme !== 'light';
 
   return (
-    <aside className={`w-80 border-l flex flex-col justify-between p-3.5 z-20 select-none overflow-y-auto shrink-0 ${
+    <aside className={`w-72 2xl:w-80 border-l flex flex-col justify-between p-3 xl:p-3.5 z-20 select-none overflow-y-auto shrink-0 ${
       isDark 
         ? 'bg-[#0e0e11] border-[#27272a] text-zinc-300' 
         : 'bg-[#fafafa] border-zinc-200 text-zinc-800'
@@ -129,27 +130,29 @@ export const Inspector: React.FC<InspectorProps> = ({
           </select>
         </div>
 
-        {/* Status */}
-        <div className="space-y-1">
-          <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-            Execution / Life Cycle
-          </label>
-          <select
-            value={data.status || 'idle'}
-            onChange={(e) => onUpdateNode(id, { status: e.target.value as StepStatus })}
-            className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-medium focus:outline-none transition-colors ${
-              isDark
-                ? 'bg-[#18181c] border-[#27272a] text-white focus:border-zinc-500'
-                : 'bg-white border-zinc-200 text-black focus:border-zinc-400'
-            }`}
-          >
-            {statuses.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Folder maps have no execution state. */}
+        {data.category !== 'folder' && (
+          <div className="space-y-1">
+            <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+              Execution / Life Cycle
+            </label>
+            <select
+              value={data.status || 'idle'}
+              onChange={(e) => onUpdateNode(id, { status: e.target.value as StepStatus })}
+              className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-medium focus:outline-none transition-colors ${
+                isDark
+                  ? 'bg-[#18181c] border-[#27272a] text-white focus:border-zinc-500'
+                  : 'bg-white border-zinc-200 text-black focus:border-zinc-400'
+              }`}
+            >
+              {statuses.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Description */}
         <div className="space-y-1">

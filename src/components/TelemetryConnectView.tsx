@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, FolderOpen, ArrowRight, RefreshCw, FileText, CheckCircle2, Terminal } from 'lucide-react';
+import { Bot, FolderOpen, RefreshCw, FileText, Terminal } from 'lucide-react';
 import { AgentSession, AgentProvider, ThemeMode } from '../types';
 
 interface TelemetryConnectViewProps {
@@ -34,16 +34,16 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
         return sess.provider === 'Claude Code' || (sess.transcriptPath && sess.transcriptPath.includes('.claude'));
       }
       if (selectedProvider === 'opencode') {
-        return sess.provider === 'OpenCode' || sess.provider === 'Codex' || (sess.transcriptPath && sess.transcriptPath.includes('.opencode'));
+        return sess.provider === 'OpenCode' || (sess.transcriptPath && sess.transcriptPath.includes('.opencode'));
       }
       return true;
     });
   }, [sessions, selectedProvider]);
 
-  const providerLabel = selectedProvider === 'antigravity' ? 'Antigravity' : selectedProvider === 'claude-code' ? 'Claude Code' : selectedProvider === 'opencode' ? 'OpenCode / Codex' : 'Custom File';
+  const providerLabel = selectedProvider === 'antigravity' ? 'Antigravity' : selectedProvider === 'claude-code' ? 'Claude Code' : selectedProvider === 'opencode' ? 'OpenCode' : 'Custom File';
 
   return (
-    <div className={`flex-1 h-full overflow-y-auto p-8 flex items-center justify-center select-none ${
+    <div className={`flex-1 h-full overflow-y-auto p-8 flex items-center justify-center ${
       isDark ? 'bg-[#09090b] text-zinc-100' : 'bg-white text-zinc-900'
     }`}>
       <div className={`w-full max-w-2xl border rounded-xl p-6 space-y-6 shadow-xl ${
@@ -60,10 +60,10 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base font-semibold">
-                  AI Agent Connection & Console
+                  Session Activity
                 </h2>
                 <p className="text-xs text-zinc-400">
-                  Connect your local coding agent to stream commands and actions in real time
+                  Open an existing transcript to follow its recorded activity. Formative does not start agent runs yet.
                 </p>
               </div>
             </div>
@@ -75,10 +75,10 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
                   ? 'border-[#27272a] bg-[#18181c] text-zinc-300 hover:text-white hover:bg-zinc-800' 
                   : 'border-zinc-200 bg-white text-zinc-700 hover:text-black hover:bg-zinc-100'
               }`}
-              title="Scan local directories for active sessions"
+              title="Look for readable transcript files in this provider's local session folders"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Scan Active</span>
+              <span>Refresh Sessions</span>
             </button>
           </div>
         </div>
@@ -86,12 +86,12 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
         {/* Provider Tabs */}
         <div className="space-y-2">
           <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-            Active Agent Provider
+            Transcript Source
           </label>
           <div className="grid grid-cols-4 gap-2">
             {[
               { id: 'claude-code', label: 'Claude Code' },
-              { id: 'opencode', label: 'OpenCode / Codex' },
+              { id: 'opencode', label: 'OpenCode' },
               { id: 'antigravity', label: 'Antigravity' },
               { id: 'custom', label: 'Custom File' },
             ].map((p) => {
@@ -121,12 +121,12 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-              Local {providerLabel} Sessions ({filteredSessions.length})
+              {providerLabel} Transcripts ({filteredSessions.length})
             </label>
             {selectedProvider === 'custom' && (
               <button
                 onClick={onSelectCustomFile}
-                className="text-xs text-white hover:underline flex items-center gap-1.5"
+                className={`text-xs hover:underline flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-zinc-900'}`}
               >
                 <FolderOpen className="w-3.5 h-3.5" />
                 <span>Browse Transcript File...</span>
@@ -140,16 +140,15 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
             }`}>
               <Terminal className="w-8 h-8 text-zinc-500 mx-auto" />
               <div className="space-y-1">
-                <p className="text-sm font-semibold">
-                  No active {providerLabel} sessions found
-                </p>
+                <p className="text-sm font-semibold">No readable {providerLabel} transcripts found</p>
                 <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                  Start an agent session in your terminal or load a transcript file to stream live actions.
+                  Open a saved JSON or JSONL transcript. Formative will watch that file for new entries, but it will not run or control the agent.
                 </p>
               </div>
 
               <div className="pt-2">
                 <button
+                  type="button"
                   onClick={onSelectCustomFile}
                   className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all"
                 >
@@ -162,23 +161,22 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
               {filteredSessions.map((sess) => (
                 <div
                   key={sess.id}
-                  onClick={() => onSelectSession(sess)}
-                  className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                  className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
                     isDark
                       ? 'border-[#27272a] bg-[#18181c] hover:border-zinc-500 hover:bg-zinc-800/60'
                       : 'border-zinc-200 bg-white hover:border-zinc-400 hover:bg-zinc-50'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                    <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{sess.title}</div>
                       <div className="text-xs text-zinc-400 font-mono mt-0.5 truncate">{sess.transcriptPath}</div>
                     </div>
                   </div>
 
-                  <button className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0">
-                    Connect
+                  <button type="button" onClick={() => onSelectSession(sess)} className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shrink-0">
+                    Open transcript
                   </button>
                 </div>
               ))}

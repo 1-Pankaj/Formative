@@ -153,7 +153,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span>Operations Floor</span>
           </button>
 
-          {/* AI Flight Tab (Only active if project is loaded) */}
+          {/* Existing transcript activity (only available inside a project) */}
           <button
             disabled={!hasActiveProject}
             onClick={() => {
@@ -168,10 +168,10 @@ export const Header: React.FC<HeaderProps> = ({
                   ? isDark ? 'bg-[#1e1e1e] text-white shadow-xs' : 'bg-white text-black shadow-xs'
                   : 'text-[#858585] hover:text-white'
             }`}
-            title={hasActiveProject ? 'Live Telemetry' : 'Open a workspace first'}
+            title={hasActiveProject ? 'Inspect an existing agent transcript' : 'Choose a project first'}
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>AI Flight</span>
+            <span>Session Activity</span>
           </button>
         </div>
 
@@ -216,7 +216,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Center: In AI Flight Mode -> Flow Layout Switcher */}
+      {/* Center: transcript layout controls */}
       {viewMode === 'agent-flow' && isAiStreaming && (
         <div className={`flex items-center rounded p-0.5 border text-xs ${
           isDark ? 'bg-[#252526] border-[#3e3e42]' : 'bg-[#e7e7e7] border-[#d4d4d4]'

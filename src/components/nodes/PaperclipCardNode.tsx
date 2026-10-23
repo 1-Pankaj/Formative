@@ -13,6 +13,7 @@ import {
   Code, 
   Shield, 
   FileText,
+  Folder,
   HelpCircle,
   ChevronDown,
   ChevronUp
@@ -108,6 +109,13 @@ const CATEGORY_CONFIG: Record<NodeCategory, {
     dotColor: '#71717a',
     tagColor: 'text-zinc-400 bg-zinc-800 border-zinc-700',
     roleDescription: 'Architecture documentation memo and contracts.'
+  },
+  folder: {
+    icon: Folder,
+    bgTint: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/30',
+    dotColor: '#71717a',
+    tagColor: 'text-zinc-300 bg-zinc-800 border-zinc-700',
+    roleDescription: 'Folder found in the selected project. Its contents and relationships have not been analyzed.'
   }
 };
 
@@ -148,11 +156,13 @@ export const PaperclipCardNode: React.FC<PaperclipCardNodeProps> = ({ id, data, 
               <Icon className="w-4 h-4" />
             </div>
             {/* Live status dot */}
-            <span
-              className="node-status-border absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#121215]"
-              style={{ backgroundColor: statusDot }}
-              title={`Status: ${data.status || 'idle'}`}
-            />
+            {data.category !== 'folder' && (
+              <span
+                className="node-status-border absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#121215]"
+                style={{ backgroundColor: statusDot }}
+                title={`Status: ${data.status || 'idle'}`}
+              />
+            )}
           </div>
 
           {/* Name & Subtitle */}
@@ -181,7 +191,7 @@ export const PaperclipCardNode: React.FC<PaperclipCardNodeProps> = ({ id, data, 
             {/* Model / Adapter Badge */}
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border uppercase font-medium ${cfg.tagColor}`}>
-                {data.category}
+                {data.category === 'folder' ? 'Folder' : data.category}
               </span>
               {data.tags && data.tags.slice(0, 2).map((t: string) => (
                 <span
@@ -199,7 +209,7 @@ export const PaperclipCardNode: React.FC<PaperclipCardNodeProps> = ({ id, data, 
         {showHelp && (
           <div className="node-guide-box p-2.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 space-y-1.5 animate-in fade-in duration-150">
             <div className="font-semibold text-white flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-400">
-              <span>Architect's Guide</span>
+              <span>{data.category === 'folder' ? 'Folder map' : "Architect's Guide"}</span>
             </div>
             <p className="text-[11px] leading-relaxed text-zinc-300">
               {cfg.roleDescription}
