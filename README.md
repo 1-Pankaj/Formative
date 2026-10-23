@@ -1,8 +1,10 @@
 <div align="center">
 
-# Formative Studio
+<img src="public/assets/FormativeLogo.png" alt="Formative logo" width="88" />
 
-**A desktop-first project workspace for diagrams, tasks, and agent transcript review**
+# Formative
+
+**A desktop workspace for project diagrams, tasks, and local agent conversations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Desktop-black.svg?style=flat-square)](#quick-start)
@@ -12,37 +14,68 @@
 
 ---
 
-## What Formative does today
+Formative brings project work, architecture diagrams, and supported local agent tools into one open-source desktop app. It is released under the MIT License and has no Formative subscription plans or paid feature gates.
 
-Formative is an open-source desktop application for keeping project diagrams, tasks, and selected agent transcripts together. It is in an early foundation phase. It does **not** send prompts to an agent, start or stop agent runs, coordinate multiple agents, or report token savings.
+> [!NOTE]
+> Formative is in active development. The sections below describe what works today and what is still planned.
 
-### Projects and diagrams
+<p align="center">
+  <a href="#what-works-today">Features</a> ·
+  <a href="#agent-connections">Agent connections</a> ·
+  <a href="#privacy-and-provider-costs">Privacy</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#tech-stack">Tech stack</a>
+</p>
 
-- Create a blank project, open a local folder, or choose a clearly labeled static starter example.
-- Edit a project canvas and save its nodes and connections with the project.
-- Opening a folder creates a limited folder map. The scanner samples up to 500 top-level entries and shows up to nine folders, with a small sample of each folder’s entries. It checks a few root-level marker files, but does not analyze dependencies, inspect arbitrary source code, or run project code.
+## What works today
 
-### Tasks
+| Area | Available now |
+| --- | --- |
+| Projects | Create a project, open a local folder, or start from a clearly labeled example. Choose a project before opening its work areas. |
+| Canvas diagram | Add, edit, move, and connect components. The diagram is saved with the project and stays under your control. |
+| Project structure | Browse a limited folder view and see what selected root files suggest about the project. This view does not inspect source code. |
+| Architecture map | Build a separate, read-only map from local source files. It follows resolvable imports, recognizes selected framework routes, and marks inferred links. |
+| Tasks and issues | Create and update project tasks. Link a task to Agent Chat to include its key, title, status, and description as context. Comments are not included. |
+| Agent Chat | Start or resume read-only conversations through local Codex CLI and Claude Code CLI installations. |
+| Transcript review | Open JSON or JSONL transcripts, or browse supported local transcript locations. Review is read-only and does not control the agent that created the file. |
+| Project Office | Explore the 2D pixel office simulation. It is not connected to live agent activity. |
 
-- Create and update task records inside a selected project.
-- Task records are stored locally with the project. They do not start an agent run, and agent assignment is not available yet.
+### Project structure and architecture map
 
-### Existing transcript review
+These are separate views. The Project structure scan samples up to 500 root entries, maps up to nine top-level folders, and samples up to 50 entries in each mapped folder. It checks selected files such as `package.json`, framework configuration, Python project files, and Docker configuration.
 
-- Open JSON or JSONL transcript files, or look for readable transcripts in the local Claude Code, OpenCode, and Antigravity locations currently supported by the app.
-- Formative reads and can watch the selected file for changes. It does not connect to, prompt, start, or control the agent that produced it.
-- The transcript picker does not currently support TXT, LOG, or Markdown files. Codex, OpenClaw, Ollama, Kiro, API-key connections, and MCP connections are product directions, not working integrations today.
-- Transcript contents and paths can be sensitive. The user chooses which transcript file to open.
+The Architecture map reads a bounded set of selected local source files. It can group files into modules, follow local imports across supported languages, recognize selected Next.js, Remix, SvelteKit, Nuxt, and Astro route patterns, and suggest links between API calls and routes or source references and schemas. Import links are observed in source; API and schema links are labeled as inferences.
 
-### Project office
+Analysis runs locally. Formative does not execute project code, install dependencies, or upload source files. Dynamic imports, runtime behavior, generated code, and unsupported conventions may not appear. External package nodes currently come from `package.json`; other language ecosystems appear when imports resolve to scanned local files. File and graph limits are shown with the results.
 
-The existing 2D pixel office is a visual simulation. It is not connected to a real agent run. The office experience is being kept separate from the current project-workflow changes.
+JavaScript and TypeScript imports use a syntax parser, including scripts in Vue, Svelte, and Astro files. Python, Go, Rust, Java, C#, PHP, and Ruby imports use conservative pattern matching, so some relationships may be missed.
 
-## Privacy and costs
+Opening a folder again refreshes its Project structure scan while preserving the editable canvas. Refreshing the Architecture map updates that map separately.
 
-The desktop app works with local project folders and transcript files selected or discovered on the user’s device. It does not currently call hosted model APIs. Local or hosted agent providers may use their own network connections and may charge for their services; Formative does not claim that using those providers is free or that it saves tokens.
+### Agent connections
 
-Project records are saved in Formative’s local app data, with a browser-storage recovery copy. The browser preview has no Electron file-access bridge, so folder scanning and transcript import require the desktop app.
+The current connections use the provider's installed command-line tools:
+
+| Provider | Current behavior |
+| --- | --- |
+| Codex | Uses its read-only sandbox and may run read-only checks. |
+| Claude Code | Starts in Plan mode with project reading and search. Shell commands, file editing, and project MCP tools are not enabled in this workflow. |
+
+These connections are early implementations. Packaged-app and provider-runtime verification is still in progress.
+
+Formative checks whether the local command is installed, but does not check provider sign-in. Your prompt and relevant project context may be sent through the provider's service, and provider fees may apply. Formative does not currently coordinate multiple agents or measure token savings.
+
+Codex desktop conversations, Claude Code desktop sessions, and running Antigravity IDE sessions are not connected. Antigravity IDE support is a priority. Connections for OpenCode, OpenClaw, Ollama, Kiro, API keys, and MCP are also planned, but are not available integrations today.
+
+### Transcript review
+
+Formative can read and watch a selected transcript file for changes. It can discover supported local Claude Code, OpenCode, and Antigravity transcript locations. Antigravity IDE session folders are not discovered yet. The transcript is temporary, is cleared when you switch projects, and is not saved as an Agent Chat conversation. The picker currently supports JSON and JSONL files.
+
+## Privacy and provider costs
+
+Project records are saved in Formative's local app data, with a browser-storage recovery copy. The browser preview does not have Electron file access, so local folder scanning and transcript import require the desktop app.
+
+Architecture analysis reads selected project files on your device and does not send them to Formative. Agent Chat uses the provider service associated with the selected CLI. The provider may receive your prompt and relevant project context; provider usage or subscription fees may apply. Transcript contents and file paths can be sensitive, so choose files deliberately.
 
 ## Quick start
 
@@ -65,7 +98,7 @@ npm install
 npm run desktop
 ```
 
-This command type-checks the app, builds the desktop UI, and launches Electron. Packaged Windows targets can be created with the commands below.
+This command checks the TypeScript, builds the interface, and launches Electron.
 
 ### Browser development preview
 
@@ -73,9 +106,11 @@ This command type-checks the app, builds the desktop UI, and launches Electron. 
 npm run dev
 ```
 
-The Vite preview is for UI development. It does not provide desktop file scanning or transcript import.
+The browser preview is for interface development. It cannot scan local folders or import transcripts.
 
 ### Build Windows packages
+
+These commands create an unpacked review build or a portable executable. A standard Windows installer is planned for the final delivery phase, after product work and release verification.
 
 ```bash
 npm run dist:dir
@@ -84,7 +119,7 @@ npm run dist:portable
 
 ## Canvas controls
 
-The project canvas uses React Flow interactions: scroll to zoom, drag the canvas to pan, drag nodes to reposition them, and connect node handles to create a relationship. These connections are user-authored diagram lines; Formative does not verify them against project code.
+Scroll to zoom, drag the canvas to pan, move nodes by dragging them, and connect components from one node handle to another. Canvas connections are user-authored diagram lines; Formative does not verify them against project code.
 
 ## Tech stack
 
@@ -96,4 +131,4 @@ The project canvas uses React Flow interactions: scroll to zoom, drag the canvas
 
 ## License
 
-Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Formative is distributed under the **MIT License**. See [LICENSE](LICENSE) for details.

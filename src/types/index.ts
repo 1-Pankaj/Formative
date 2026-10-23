@@ -1,3 +1,6 @@
+import type { AgentConversation, AgentRun } from './agentRuns';
+import type { ArchitectureMap } from './architectureMap';
+
 export type ProjectType = 'web' | 'mobile' | 'backend' | 'ai-system' | 'general' | 'roblox' | 'ai-tool' | 'realtime' | 'data-pipeline';
 
 export type SkillDepartment = 'frontend' | 'backend' | 'qa' | 'database';
@@ -26,6 +29,26 @@ export interface IssueItem {
   }>;
 }
 
+export interface ProjectScanEvidence {
+  path: string;
+  observation: string;
+  meaning: string;
+}
+
+export interface ProjectScanSummary {
+  inspectedAt: string;
+  rootEntryCount: number;
+  rootEntryLimit: number;
+  rootEntriesTruncated: boolean;
+  visibleFolderCount: number;
+  mappedFolderCount: number;
+  visibleFileCount: number;
+  suggestedType: ProjectType;
+  suggestionReason: string;
+  evidence: ProjectScanEvidence[];
+  limitations: string[];
+}
+
 export interface Project {
   id: string;
   source?: 'folder-map' | 'starter-example';
@@ -33,6 +56,7 @@ export interface Project {
   description: string;
   type: ProjectType;
   folderPath?: string;
+  folderMapCreatedAt?: string;
   updatedAt: string;
   nodes: any[];
   edges: any[];
@@ -41,6 +65,10 @@ export interface Project {
   officeConfig?: ProjectOfficeConfig;
   issues?: IssueItem[];
   nextTaskNumber?: number;
+  scanSummary?: ProjectScanSummary;
+  architectureMap?: ArchitectureMap;
+  agentConversations?: AgentConversation[];
+  agentRuns?: AgentRun[];
 }
 
 export type NodeCategory = 
@@ -106,7 +134,7 @@ export interface AgentSession {
   isCurrent?: boolean;
 }
 
-export type ViewMode = 'welcome' | 'architecture' | 'agent-flow' | 'operations-floor' | 'org-chart' | 'issues';
+export type ViewMode = 'welcome' | 'project-home' | 'architecture' | 'agent-chat' | 'agent-flow' | 'operations-floor' | 'issues';
 export type FlowLayout = 'tree' | 'timeline';
 export type ThemeMode = 'dark' | 'light';
 

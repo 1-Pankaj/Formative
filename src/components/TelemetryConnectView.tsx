@@ -60,10 +60,10 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base font-semibold">
-                  Session Activity
+                  Saved transcripts
                 </h2>
                 <p className="text-xs text-zinc-400">
-                  Open an existing transcript to follow its recorded activity. Formative does not start agent runs yet.
+                  Choose a local transcript to read its recorded activity. This does not connect to or control the agent.
                 </p>
               </div>
             </div>
@@ -78,7 +78,7 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
               title="Look for readable transcript files in this provider's local session folders"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh Sessions</span>
+              <span>Refresh list</span>
             </button>
           </div>
         </div>
@@ -142,7 +142,7 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
               <div className="space-y-1">
                 <p className="text-sm font-semibold">No readable {providerLabel} transcripts found</p>
                 <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
-                  Open a saved JSON or JSONL transcript. Formative will watch that file for new entries, but it will not run or control the agent.
+                  Choose a saved JSON or JSONL transcript. Formative will watch that file for new entries, but it will not run or control the agent. The open transcript is not saved to this project.
                 </p>
               </div>
 
@@ -152,7 +152,7 @@ export const TelemetryConnectView: React.FC<TelemetryConnectViewProps> = ({
                   onClick={onSelectCustomFile}
                   className="px-4 py-2 rounded-lg bg-white text-black hover:bg-zinc-200 text-xs font-semibold shadow-sm transition-all"
                 >
-                  Browse Transcript File
+                  Choose a transcript file
                 </button>
               </div>
             </div>

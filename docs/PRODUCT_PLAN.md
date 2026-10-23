@@ -1,7 +1,7 @@
 # Formative product plan and audit backlog
 
-**Status:** Phase 1 source changes are complete; desktop runtime verification remains pending  
-**Last updated:** 2026-10-23  
+**Status:** Phase 2 source implementation and Playwright renderer verification are complete; the Phase 3 read-only chat source workflow is implemented and awaiting desktop runtime verification; native Electron and persistence verification remain pending
+**Last updated:** 2026-10-24
 **Scope:** Formative desktop application, product direction, UX, security, and audited backlog
 
 This document captures the product intent and the issues found in the initial audit. It is the shared reference for planning the work. Items below are proposals and todo items, not a commitment to implement every provider or feature in the first release. Product and provider priorities can be refined before each phase starts.
@@ -12,14 +12,14 @@ Formative is a desktop-first, open-source workspace for using local and hosted A
 
 The workflow view is a live explanation of real execution. Its nodes should show meaningful events such as the task, agent activity, tool use, files changed, checkpoints, blockers, and completion. A newcomer should be able to understand the important points without reading raw logs; an experienced user should be able to inspect the underlying detail. A graph that is merely decorative, prefilled, or disconnected from agent activity does not meet this goal.
 
-Formative should remain free and open source as an application. Users should be able to bring their existing local agent installations, credentials, API keys, or MCP services where supported. “Free” must be explained accurately: a provider may still charge for its CLI subscription, API use, hosted model, or other service. Formative should show known usage and cost information where it can do so reliably and label estimates clearly. Token saving is a product goal, but the app must explain what it saved and how it calculated that number rather than making unsupported claims.
+Formative should remain free and open source as an application, with no Formative subscription plans or paid feature gates. Users should be able to bring their existing local agent installations, credentials, API keys, or MCP services where supported. “Free” must be explained accurately: a provider may still charge for its CLI subscription, API use, hosted model, or other service. Formative should show known usage and cost information where it can do so reliably and label estimates clearly. Token saving is a product goal, but the app must explain what it saved and how it calculated that number rather than making unsupported claims.
 
 The product should feel approachable to a first-time user without hiding useful control from experienced users. Clear defaults, plain-language explanations, and a guided first success belong in the main experience. Advanced configuration can be available when needed, with provider and technical terms explained in context.
 
 ## 2. Product principles
 
 - **Real state only.** “Online,” “running,” “streaming,” task counts, workflow nodes, and analysis results must come from real state. Samples must be labelled as samples.
-- **Project context first.** Workspaces, tasks, blueprints, and agent conversations belong to a selected project. A user should not accidentally act on an unclear project.
+- **Project context first.** Canvas work, tasks, folder evidence, transcript inspection, and future agent conversations belong to a clearly selected project. A user should not accidentally act on an unclear project.
 - **Show the work.** A live workflow should be derived from actual agent and tool events, with a readable summary and inspectable details.
 - **Beginner clarity with expert depth.** Explain unfamiliar terms at the point of use. Keep raw events, provider settings, and advanced controls available without making them the first thing everyone sees.
 - **Local-first and explicit access.** Make it clear which project files, processes, credentials, and tools a connection can access. Ask for user approval at meaningful security boundaries.
@@ -47,7 +47,7 @@ The 2D pixel office is a valued part of the product. Its visual design and offic
 
 The following is the proposed access model for the first coherent workflow:
 
-1. The user creates or selects a project before entering project work areas such as tasks, issues, blueprints, workflow, or project agent conversations.
+1. The user creates or selects a project before entering project work areas such as tasks, issues, the canvas, workflow, or project agent conversations.
 2. A new conversation is created inside the selected project and is associated with an agent/provider connection.
 3. Controls that operate on a conversation or its run require an active conversation. The interface should explain how to select or start one when none is active.
 4. Project-independent areas such as global preferences, help, and connection setup may be available outside a project when they do not inspect or change project data.
@@ -81,6 +81,24 @@ Each integration should declare the actions it can perform: send a prompt, strea
 
 Before selecting integration order, define the first complete provider workflow and the security/approval model. Do not build shallow “connected” badges for every provider before one provider works end to end.
 
+### Provider priority for Phase 3
+
+The user has chosen **Codex CLI and Claude Code together** for the first real in-app agent workflow. **Google Antigravity remains high priority**, immediately after the shared Codex/Claude workflow has a dependable run, stop, history, and permission model. Google's [current FAQ](https://antigravity.google/docs/faq/) says wrapping the Antigravity headless CLI in third-party applications is unsupported for consumer plans. Formative must not ship that consumer CLI wrapper; verify an explicitly supported connection path first. A direct Gemini API connection, if added, is a separate provider and must not be presented as Antigravity. Detecting an installed command or discovering a transcript must not be presented as full run support.
+
+| Provider | Phase 3 route | Initial boundary | Required before it is labelled supported |
+| --- | --- | --- | --- |
+| Codex | Current first slice starts/resumes the installed Codex CLI. Evaluate the documented app-server for a native Formative conversation surface that does not require users to work in a terminal. | Read-only project scope; no dangerous approval/sandbox bypasses. Existing Codex desktop sessions are not attached by the current CLI workflow. | Start and resume a project conversation; stream useful events; stop safely; save accurate local history. Evaluate app-server for desktop-app users; distinguish starting a Formative-owned thread from attaching to an existing Codex app thread. |
+| Claude Code | Current first slice starts/resumes the installed CLI. Claude Code's Desktop Code tab is not integrated. Official documentation describes separate Desktop and CLI session histories, so transcript discovery must not be assumed to expose Desktop sessions. | Read-only project inspection; no permission-bypass mode, shell tool, project MCP server, hook, or customization is enabled in this first slice. Provider credentials remain in the user's own setup. | Research a documented local SDK/session bridge for Desktop and IDE users; test which local histories are readable. Keep start/resume/control capabilities distinct from passive transcript review. |
+| Antigravity | High-priority evaluation. Current Formative transcript discovery checks `~/.gemini/antigravity/brain`; it does not check the Antigravity IDE root at `~/.gemini/antigravity-ide/brain`. Evaluate documented IDE hooks and transcript metadata as an opt-in, local, read-only observer that matches the selected project. | Do not wrap consumer `agy` CLI sessions in Formative. Google's [hooks documentation](https://antigravity.google/docs/hooks?tab=ide) describes workspace paths and transcript locations, but any observer must be checked against current provider terms and must not imply control of the IDE agent. A direct Gemini API adapter is a separate provider. | Confirm that the proposed observation method is supported; identify sessions by their real workspace path; stream only documented activity; verify privacy, cancellation semantics, and Windows behavior before claiming support. Keep Formative-initiated Antigravity runs unavailable until an explicitly supported route is confirmed. |
+
+#### Desktop and IDE sessions
+
+The first source implementation is CLI-only for Codex and Claude Code. It does not detect whether their desktop applications are installed, attach to the conversation currently open in those applications, or read their live app state. Codex's documented app-server is a candidate native protocol for Formative-owned threads and events; it does not by itself prove that an existing desktop-app thread can be attached. Claude Code Desktop and CLI histories are separate according to the [Desktop documentation](https://code.claude.com/docs/en/desktop), so the existing CLI transcript scanner is not evidence of Desktop session support.
+
+For Antigravity IDE, the user wants Formative to observe the local workspace that is already running there. The current code does not do this: it only discovers transcripts under the Antigravity App data root. First investigate an opt-in, read-only observer using documented local session metadata, scoped to the selected project. Label it as “watching an external session”; do not imply Formative started, can resume, or can stop that IDE run unless those actions are implemented through an approved provider interface.
+
+Phase 3 does **not** imply simultaneous multi-agent orchestration. It first creates one clear conversation and run at a time, with provider selection per conversation. Task association, workflow summaries, persisted history, and tutorial steps must be backed by real state.
+
 ## 7. Product and design references
 
 - **Paperclip code in this repository:** Use it to study clear hierarchy, contextual feedback, consistent interface primitives, and real task/cost state. It is a reference for quality and selected interaction patterns, not a template to copy. Formative needs its own information architecture and identity.
@@ -99,19 +117,19 @@ The first pass reviewed the current source and selected screens in the running d
 - [x] **DATA-01 — Prevent silent canvas/workflow data loss.** Canvas edits now autosave to project state, debounce desktop persistence, flush before navigation/project switches, and report save errors. Runtime restart, filesystem failure, and concurrent-save behavior still need verification.
 - [x] **AGENT-01 — Make transcript ingestion format-safe.** The picker only accepts JSON/JSONL, JSON and JSONL records are normalized defensively, and files, records, line sizes, and displayed text are bounded. Malformed/large-file cases have not been runtime tested; TXT/LOG/MD remain unsupported and are no longer advertised.
 - [x] **TRUTH-01 — Replace simulated agent state with observed state.** Simulated task/live-agent controls, online indicators, generated running nodes, fictional task assignees, sample task records, and the hard-coded agent org chart were removed or relabeled. Transcript viewing is described as read-only monitoring and does not claim to start or control agents.
-- [x] **FLOW-01 — Remove silent no-op core actions and enforce project/chat context.** Unsupported browser-only scan/import paths explain the desktop requirement; project areas and transcript discovery require a selected project; transcript monitoring requires an explicitly selected transcript. A running agent chat is not implemented yet.
+- [x] **FLOW-01 — Remove silent no-op core actions and enforce project/chat context.** Unsupported browser-only scan/import paths explain the desktop requirement; project areas and transcript discovery require a selected project; transcript monitoring requires an explicitly selected transcript. At the audit baseline, a running agent chat was not implemented; Phase 3 now adds the read-only Codex and Claude Code workflow described below.
 - [x] **CANVAS-01 — Place library nodes predictably.** New nodes are positioned near the viewport center and checked against existing nodes with a cascade.
 - [x] **DELETE-01 — Protect project removal.** Project removal now asks for confirmation, explains that folder files are preserved, and offers an undo action.
-- [x] **SCAN-01 — Make the current folder import honest and bounded.** It now presents generic folder nodes and “contains” relationships, samples at most 500 root entries, inspects at most nine top-level folders, and checks no arbitrary project code. README and UI describe this as a limited folder map, not dependency or architecture analysis. A richer evidence-based project analysis remains a Phase 2 decision.
+- [x] **SCAN-01 — Make the current folder import honest and bounded.** It presents generic folder nodes and “contains” relationships, samples at most 500 root entries, inspects at most nine top-level folders, and does not run project code. Phase 2 adds fixed, existence-only checks for selected manifests/config files and records their meaning and limitations. The result remains a folder map, not dependency or architecture analysis.
 
 ### P2 — resolve in the coherent workflow and usability phases
 
 - [x] **SETTINGS-01 — Make settings real or remove them.** Unused provider-path, transcript-history, and save-interval controls were removed from Preferences. The theme selector is retained and persists on-device. Provider directories remain fixed to the currently discovered local locations; configurable discovery paths can return when they are implemented end to end.
 - [x] **ISSUE-01 — Keep issue/task counts and identifiers consistent.** Navigation counts now come from the active project; task keys use a project-persisted next number and survive task deletion/restart. Runtime persistence verification remains pending.
-- [x] **UX-01 — Establish a compact desktop shell baseline.** Navigation widths and status content now compress, project-work areas are gated, and Electron’s minimum window size is 1024×680. Resizing/scrolling and visual clarity still need runtime review at the agreed desktop sizes.
-- [ ] **A11Y-01 — Make interaction and text accessible.** Several clickable `<div>` elements (including onboarding choices, transcript entries, and issue rows) lack native button/link semantics. Dialogs need appropriate dialog semantics, focus containment/restoration, and keyboard behavior. Review color contrast, remaining local text-selection suppression, accessible names, and reduced-motion behavior.
+- [x] **UX-01 — Establish a compact desktop shell baseline.** Navigation widths and status content now compress, project-work areas are gated, and Electron’s minimum window size is 1024×680. Playwright renderer checks covered 1024×680 and 1280×720; native Electron review is still pending.
+- [ ] **A11Y-01 — Make interaction and text accessible.** The project chooser and task selection now expose keyboard semantics, and the new-project dialog has a labelled dialog role. Onboarding choices and other older interactions still need native semantics; focus containment/restoration, reduced motion, selection behavior, and a full contrast review remain open.
 - [ ] **ONBOARD-01 — Turn onboarding into a useful guided first success.** The close action now records dismissal, and current copy no longer claims unsupported shortcuts or agent controls. The current tab/step explanation is still not a contextual tutorial. Replace it with a resumable path that helps a person select a project, connect a real supported agent, create a task, start a safe run, and understand the resulting workflow. Include a clearly labeled sample path if a real connection is not yet configured.
-- [ ] **BLUEPRINT-01 — Make blueprints real, or stop presenting them as generated truth.** Define what a blueprint represents, how it is created, validated, edited, and used. Blueprints must map to real project evidence or be clearly marked as editable examples/templates. Their nodes and edges must work. If no valid blueprint exists, use an honest empty state rather than generic jargon or fabricated architecture.
+- [x] **BLUEPRINT-01 — Remove the unsupported blueprint concept.** There is no separate generated blueprint in the first coherent workspace. The canvas is a user-edited project diagram; starter diagrams are labelled as static examples. The agent team view is deferred until real runs exist.
 - [ ] **STYLE-01 — Bring all views into a coherent Formative design system.** Audit theme drift, dense technical labels, inconsistent controls, low-contrast light-theme text, and the split between beginner and advanced concepts. Use shared components and tokens across project selection, canvas, issue/task, onboarding, telemetry, settings, and other app views.
 - [x] **PRIV-01 — Align offline/privacy claims with actual dependencies.** The remote Google Fonts dependency was removed; the app uses system fonts and the README now describes local desktop data access and provider-side cost/network caveats. Runtime network behavior still needs packaged-app review.
 - [x] **DOC-01 — Align product documentation and supported-provider claims.** README now separates working project/task/transcript features from planned agent integrations and documents the scanner limits, transcript formats, desktop requirements, and provider cost caveat. Provider discovery behavior still needs runtime verification.
@@ -133,7 +151,7 @@ Each phase should start with a short acceptance checklist. Later phases depend o
 - [ ] Define the meaning and measurement of “save tokens” (for example, fewer repeated prompts, context selection, summarization, and/or transparent usage reporting).
 - [ ] Pick the first provider integration based on the audience and available local setup; document what it can and cannot do.
 - [ ] Define file/process access, tool approval, cancellation, credential storage, event retention, and error-state expectations.
-- [ ] Specify what a blueprint is and whether the first release needs blueprints at all.
+- [x] Specify that the first release uses an editable project canvas and labelled examples, with no separate generated blueprint feature.
 - [ ] Establish supported desktop window sizes and an initial accessibility bar.
 
 ### Phase 1 — Trustworthy desktop foundation
@@ -143,30 +161,43 @@ Each phase should start with a short acceptance checklist. Later phases depend o
 - [x] Remove simulated live statuses and task records; make unsupported agent-run actions explicit.
 - [x] Apply project-first navigation and transcript-selection rules with clear messages.
 - [x] Raise readable light-mode secondary-text contrast, preserve intentionally dark surfaces, and correct light-surface hover/guide labels. (Source update complete; live visual review pending.)
-- [ ] Verify the desktop shell at supported resized window dimensions and address any remaining layout defects.
+- [x] Verify the renderer shell at 1024×680 and 1280×720; no page overflow remained in the overview, tasks, canvas, or guide. Native Electron review is still open.
 - [ ] Review light- and dark-theme contrast, hover, focus, and disabled states in the desktop app.
 - [x] Keep folder import bounded and labeled as a folder map; defer dependency-aware project analysis to Phase 2.
 - [ ] Complete runtime verification for persistence, selected-file permissions, transcript parsing/watching, and packaged Electron behavior.
 
 ### Phase 2 — Coherent project workspace
 
-- [ ] Design a beginner-readable project home with a clear next action and visible project identity.
-- [ ] Make tasks/issues, conversations, workflow, and project analysis share reliable project data.
-- [ ] Decide the first evidence sources and implement a project scanner that explains what each source proves and where it is uncertain.
-- [ ] Decide, then implement functional blueprints or remove/defer the unsupported blueprint experience.
-- [ ] Add accessible interaction semantics and consistent visual tokens to the core paths.
+- [x] Add a project overview as the first screen after selecting or creating a project, with project identity, real task/canvas counts, and direct paths to the current work areas.
+- [x] Keep project tasks, canvas items, and scan evidence in the saved project record. Transcript review remains read-only and temporary; it is not presented as a saved project conversation or agent run.
+- [x] Scan bounded directory samples and fixed marker paths using existence checks only. Explain what each observed marker suggests and what it cannot prove; do not read source code or execute project files.
+- [x] Defer separate blueprints and the unsupported agent-team view. Keep the project canvas user-authored and starter diagrams visibly labelled as examples.
+- [x] Add keyboard-operable project selection/task selection, accessible names for the project cards and task actions, dialog semantics for project creation, and theme-safe overview styling. The broader A11Y-01 and STYLE-01 audits remain open.
 
-### Phase 3 — One real agent, end to end
+**Phase 2 boundaries:** live agent conversations, run history, provider execution, and a guided tutorial for a real run stay in Phase 3. Folder scans are refreshed when the same folder is opened again; refresh updates evidence but preserves user canvas edits.
 
-- [ ] Define a provider adapter contract and truthful capability/status model.
-- [ ] Implement one prioritized provider connection, prompt/run, event stream, stop/cancel, failure, and reconnect path.
-- [ ] Represent observed execution as readable workflow events with detail inspection and useful explanations.
-- [ ] Associate runs with a project, task, and conversation; preserve history and outputs.
-- [ ] Deliver a guided tutorial that walks through this real supported path, with a sample fallback clearly labeled.
+### Phase 3 — Real project conversations with Codex and Claude Code
+
+- [x] Define a provider adapter contract and truthful capability/status model in the shared types. No provider is marked supported until its implementation is complete.
+- [x] Add project-scoped conversation, run, and user-visible event records with bounded IPC validation. Stored paths must be project-relative; hidden model reasoning is excluded from the event model.
+- [x] Set provider order: Codex CLI and Claude Code in the first workflow; Antigravity remains the high-priority follow-up, gated on an explicitly supported third-party connection path. Local command presence is neither an authentication nor an authorization check.
+- [x] Document the first Codex and Claude CLI protocols, safe read-only limits, and authentication boundaries. Local installs are detected; account state is not probed.
+- [x] Implement provider discovery that reports local command installation separately from unchecked authentication.
+- [x] Build a project-first Agent Chat workspace with Codex/Claude provider choice, conversation history, task association, and run status. When a task is linked, only its key, title, status, and description are sent as provider context; the UI explains that sharing. Source is implemented; live desktop review remains open.
+- [x] Implement source paths for Codex/Claude conversation start/resume, structured progress, stop/cancel, and failure states. Provider runtime behavior and restart recovery have not yet been exercised.
+- [ ] Add and verify non-CLI provider surfaces for users of desktop apps and IDEs: evaluate Codex app-server for Formative-owned conversations, investigate Claude Code Desktop/IDE session access, and add opt-in Antigravity IDE session observation only through a provider-supported, project-scoped path. Make “start,” “watch,” “resume,” and “stop” distinct capabilities.
+- [x] Show the read-only project scope and provider data/billing notice. No permission/sandbox bypass flags are used.
+- [x] Map real provider messages and read-tool progress into readable events; hidden reasoning and raw tool output are excluded. Only bounded conversation output is retained locally.
+- [x] Preserve conversation/run history locally with bounded records and terminal states. Startup recovery marks stale in-flight records as interrupted so they do not remain “running” after Formative restarts; persistence/restart verification remains open.
+- [ ] Add a Formative-visible approval flow before enabling project edits or agent commands that need broader permission.
+- [ ] Complete the contextual guided tutorial. Agent Chat now offers an in-view, action-oriented first-run step based on folder, provider, and prompt readiness. Continue it through run review, make progress resumable, and include an explicitly labeled sample fallback without simulating real runs.
+- [ ] Run a desktop smoke walkthrough with each locally installed provider, including stop, resume, failure, and app restart. Do not submit a provider prompt without the user's own action inside Formative.
+
+**Antigravity follow-up (high priority):** immediately after the Codex/Claude baseline, confirm an integration route that is explicitly supported for third-party applications. Current official guidance rules out wrapping the consumer headless CLI; keep Antigravity unavailable unless a permitted route is confirmed. Any Google AI Studio/Gemini API connector is a separate provider, not Antigravity.
 
 ### Phase 4 — Broader local and multi-agent support
 
-- [ ] Expand integrations incrementally across the user-prioritized candidates: Codex, Antigravity, Claude Code, OpenCode, OpenClaw, Ollama, Kiro, API/BYOK, and MCP.
+- [ ] Expand integrations incrementally across the user-prioritized candidates: OpenCode, OpenClaw, Ollama, Kiro, API/BYOK, and MCP. Antigravity remains a high-priority Phase 3 evaluation, gated on a supported third-party connection path.
 - [ ] Show a per-provider capability and setup matrix; never imply parity where it does not exist.
 - [ ] Add multi-agent coordination only when assignments, handoffs, permissions, event ownership, and failure recovery are understandable and observable.
 - [ ] Report token/cost savings only with a defined calculation, provider data, and a distinction between measured values and estimates.
@@ -181,6 +212,16 @@ Each phase should start with a short acceptance checklist. Later phases depend o
 ### Later, separate phase — Office simulation
 
 - [ ] Revisit office changes only after the user asks to begin office work. Keep the existing pixel-office experience unchanged during Phases 0–5 unless a core app integration requires a narrowly scoped connection that does not redesign the office.
+
+### Phase 6 — Final Windows installer and release packaging
+
+This is the final delivery phase. Start it only after the agreed product and office work for the first release is complete and the Phase 0–5 acceptance checks have passed. The current unpacked and portable Windows builds are development/review artifacts; they are not an installer.
+
+- [ ] Choose and document the installer format and install scope (per-user or per-machine), installation location, shortcuts, upgrade behavior, and uninstall behavior.
+- [ ] Configure the installer and its branding. Decide whether code signing is in scope and document the certificate and release requirements if it is.
+- [ ] Produce a Windows installer from the release build and verify installation, first launch, upgrade from a prior supported build, repair/reinstall, and uninstall on supported Windows versions.
+- [ ] Verify that packaged assets, app permissions, local provider discovery, and user data retention/recovery behave as documented after install and uninstall.
+- [ ] Prepare checksums, installation/update instructions, known limitations, and release notes for the installer artifact.
 
 ## 10. First usable milestone acceptance criteria
 
@@ -203,17 +244,19 @@ The first usable milestone should satisfy all of the following before broadening
 
 These are intentionally recorded instead of guessed. They do not prevent writing this plan, but they should be answered before work that depends on them begins.
 
-- Which provider should be the first full integration, and does it use an existing local login, an API key, MCP, or another method?
+- **Resolved:** Codex CLI and Claude Code are both in the first integration set; Antigravity remains high priority but cannot be wrapped through the consumer headless CLI under current Google guidance. Confirm an approved route before implementation. Document authentication per provider and never assume credentials are available just because a CLI is installed.
 - Does “save tokens” primarily mean reduce context sent, reuse/summarize history, avoid redundant work, or display usage and cost? Which measures can be proven?
 - What file changes and tool calls may an agent make by default, and which actions require user approval?
 - Which operating systems are supported for the first desktop release?
 - Does the first multi-agent experience need simultaneous agents, sequential delegation, or both?
 - Should chat and workflow remain visible together by default, or should users choose the emphasis?
 - Which project files should the first scanner read, and how should it explain confidence and limitations?
-- Should blueprints be a first-release feature, a template system, or a generated project map?
+- Blueprints are not a separate first-release feature; the editable canvas and labelled starter examples cover the current use case.
 
 ## 12. Audit method and limits
 
+Playwright renderer verification on 2026-10-23 covered the project overview, task empty state, canvas, and every guide section at 1024×680 and 1280×720. The canvas had no page overflow, all four nodes stayed within its visible bounds, and the minimap was hidden at the compact breakpoint. Guide sections were checked in light and dark themes; the long component section stayed inside its scrollable panel. No browser console errors were recorded. The source passed `npm run build`, `node --check electron/main.cjs`, `node --check electron/preload.cjs`, and `git diff --check`. Vite still reports its existing main-bundle size warning. These checks exercised the renderer through a Playwright-backed browser, not the user's open Electron window. Native Electron, persistence/restart, and packaged behavior remain open.
+
 The initial audit inspected the Formative source tree, Electron entry/preload code, React views and styling, README/configuration claims, and selected screens in a running development UI. It identified concrete code paths and visual states listed above. The browser was used as an inspection surface; Formative’s intended product remains desktop-first.
 
-The initial audit did not build or package the Electron application, execute a test suite, exhaustively exercise every UI state, inspect every office renderer path, run a dependency scanner, or prove an exploit. Security items are risks to validate and harden, not claims of a confirmed attack. Phase 1 source changes began on 2026-10-23 after the product plan was established. The updated source passes `npm run build` (TypeScript and Vite); Vite still reports the existing JavaScript chunk-size warning above 500 kB. The user also reported a successful `npm run desktop` build/start before the latest light-theme changes. Live Electron visual review, window-resize checks, persistence restart/failure checks, and packaged-app verification remain pending because the open desktop window was not accessible to this audit session.
+The initial audit did not package the Electron application, execute a test suite, exhaustively exercise every UI state, inspect every office renderer path, run a dependency scanner, or prove an exploit. Security items are risks to validate and harden, not claims of a confirmed attack. Phase 1 source changes began on 2026-10-23 after the product plan was established; Phase 2 source work added the project overview, scan evidence, and clarified canvas/transcript scope. A focused renderer preview pass on 2026-10-23 checked the project canvas and guide at 1024×680 and 1280×720, including both themes. It corrected component-library row clipping, canvas minimap overlap, resize fitting, and guide contrast/surfaces. This was a browser renderer preview, not the user's running Electron window. The current source passes `npm run build` (TypeScript and Vite) and `node --check electron/main.cjs`. Vite still reports a large JavaScript chunk warning (the main app bundle is about 1.09 MB). No test suite was run. Native Electron behavior, scan refresh and persistence, and packaged-app verification remain pending; the current session cannot inspect the open native desktop window.

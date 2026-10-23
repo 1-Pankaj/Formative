@@ -279,8 +279,8 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 select-none">
-      <div className={`w-full max-w-xl border rounded-xl shadow-2xl overflow-hidden flex flex-col ${
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+      <section role="dialog" aria-modal="true" aria-labelledby="new-project-title" tabIndex={-1} className={`w-full max-w-xl border rounded-xl shadow-2xl overflow-hidden flex flex-col ${
         isDark ? 'bg-[#09090b] border-[#27272a] text-zinc-100' : 'bg-white border-zinc-200 text-zinc-900'
       }`}>
         {/* Header */}
@@ -294,9 +294,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
               <img src={formativeLogo} alt="Formative" className="w-full h-full object-contain rounded" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold tracking-tight">
+              <h2 id="new-project-title" className="text-sm font-semibold tracking-tight">
                 New Project
-              </h3>
+              </h2>
               <p className="text-xs text-zinc-400">
                 Start with a blank canvas or an editable example
               </p>
@@ -304,7 +304,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close new project dialog"
             className={`p-1.5 rounded-lg transition-colors ${
               isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800' : 'text-zinc-500 hover:text-black hover:bg-zinc-200'
             }`}
@@ -317,10 +319,11 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
         <div className="p-6 space-y-5">
           {/* Project Name */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
+            <label htmlFor="new-project-name" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
               Project Name
             </label>
             <input
+              id="new-project-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -336,10 +339,11 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
+            <label htmlFor="new-project-description" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
               Description (Optional)
             </label>
             <input
+              id="new-project-description"
               type="text"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
@@ -354,9 +358,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
 
           {/* Template Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
               Optional Starter Diagram
-            </label>
+            </span>
             <p className="text-xs text-zinc-400">Examples are static diagrams and are not generated from your project files.</p>
             <div className="max-h-56 overflow-y-auto pr-1 space-y-2">
               {templates.map((t, idx) => {
@@ -425,7 +429,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
             <span>Create Project</span>
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

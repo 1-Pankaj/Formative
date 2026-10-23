@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import {
   ListChecks,
   Activity,
+  MessageSquareText,
+  Home,
+  FolderOpen,
   Crown,
-  Network,
   Layers,
-  Briefcase,
   BookOpen,
   Plus,
   Moon,
@@ -74,7 +75,8 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
           {/* Logo Badge - Formative */}
           <button
             onClick={() => onChangeViewMode('welcome')}
-            title="Formative Home / Welcome Screen"
+            aria-label="Open project library"
+            title="Project library"
             className="w-8 h-8 rounded-lg bg-[#18181c] border border-zinc-700/60 flex items-center justify-center p-1 shadow-xs hover:scale-105 active:scale-95 transition-transform overflow-hidden"
           >
             <img src={formativeLogo} alt="Formative" className="w-full h-full object-contain rounded" />
@@ -92,8 +94,9 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                   key={p.id}
                   onClick={() => {
                     onSelectProject(p.id);
-                    if (viewMode === 'welcome') onChangeViewMode('architecture');
                   }}
+                  aria-label={`Open ${p.name}`}
+                  aria-current={isActive ? 'page' : undefined}
                   title={p.name}
                   className={`relative w-8 h-8 rounded-lg text-xs font-semibold flex items-center justify-center transition-all ${
                     isActive
@@ -191,6 +194,9 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
         <div className="p-3 border-b flex-shrink-0 relative">
           <button
             onClick={() => setIsProjectDropdownOpen(!isProjectDropdownOpen)}
+            aria-expanded={isProjectDropdownOpen}
+            aria-haspopup="true"
+            aria-label={activeProject ? `Current project: ${activeProject.name}. Choose another project` : 'Choose a project'}
             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left transition-colors ${
               isDark 
                 ? 'bg-[#121215] border-[#27272a] hover:border-zinc-700 text-zinc-100' 
@@ -226,6 +232,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                       onSelectProject(p.id);
                       setIsProjectDropdownOpen(false);
                     }}
+                    aria-pressed={activeProject?.id === p.id}
                     className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left transition-colors ${
                       activeProject?.id === p.id
                         ? isDark ? 'bg-zinc-800 text-white font-medium' : 'bg-zinc-100 text-black font-medium'
@@ -261,9 +268,24 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
             </div>
             <div className="space-y-0.5">
               <button
+                onClick={() => onChangeViewMode('project-home')}
+                disabled={!activeProject}
+                title={!activeProject ? 'Choose a project first' : 'Open this project overview'}
+                aria-current={viewMode === 'project-home' ? 'page' : undefined}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                  viewMode === 'project-home'
+                    ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
+                    : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-700 hover:text-black hover:bg-zinc-100'
+                }`}
+              >
+                <Home className="w-4 h-4 text-zinc-500" aria-hidden="true" />
+                <span>Overview</span>
+              </button>
+              <button
                 onClick={() => onChangeViewMode('issues')}
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Open project tasks'}
+                aria-current={viewMode === 'issues' ? 'page' : undefined}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'issues'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
@@ -282,9 +304,27 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
               </button>
 
               <button
+                onClick={() => onChangeViewMode('agent-chat')}
+                disabled={!activeProject}
+                title={!activeProject ? 'Choose a project first' : 'Start or continue a project agent conversation'}
+                aria-current={viewMode === 'agent-chat' ? 'page' : undefined}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                  viewMode === 'agent-chat'
+                    ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
+                    : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-700 hover:text-black hover:bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquareText className="w-4 h-4 text-blue-400" aria-hidden="true" />
+                  <span>Agent chat</span>
+                </div>
+              </button>
+
+              <button
                 onClick={() => onChangeViewMode('agent-flow')}
                 disabled={!activeProject}
-                title={!activeProject ? 'Choose a project first' : 'Open a selected transcript'}
+                title={!activeProject ? 'Choose a project first' : 'Browse saved transcripts for this project'}
+                aria-current={viewMode === 'agent-flow' ? 'page' : undefined}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'agent-flow'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
@@ -293,7 +333,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
               >
                 <div className="flex items-center gap-2.5">
                   <Activity className="w-4 h-4 text-emerald-400" />
-                  <span>Session Activity</span>
+                  <span>Saved transcripts</span>
                 </div>
                 {isTranscriptWatching && (
                   <span title="Watching the selected transcript" className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -311,6 +351,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
               <button
                 onClick={() => onChangeViewMode('operations-floor')}
                 disabled={!activeProject}
+              aria-current={viewMode === 'operations-floor' ? 'page' : undefined}
                 title={!activeProject ? 'Choose a project first' : 'Open the project office'}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'operations-floor'
@@ -339,16 +380,17 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
             </div>
           </div>
 
-          {/* Section: ARCHITECTURE & VIEWS */}
+          {/* Section: PROJECT CANVAS */}
           <div>
             <div className="px-2 mb-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-              Architecture & Views
+              Project canvas
             </div>
             <div className="space-y-0.5">
               <button
                 onClick={() => onChangeViewMode('architecture')}
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Open the project canvas'}
+                aria-current={viewMode === 'architecture' ? 'page' : undefined}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'architecture'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
@@ -357,39 +399,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
               >
                 <div className="flex items-center gap-2.5">
                   <Layers className="w-4 h-4 text-cyan-400" />
-                  <span>Component Canvas</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => onChangeViewMode('org-chart')}
-                disabled={!activeProject}
-                title={!activeProject ? 'Choose a project first' : 'View the agent team state for this project'}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                  viewMode === 'org-chart'
-                    ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
-                    : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Network className="w-4 h-4 text-purple-400" />
-                  <span>Agent Team</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => onChangeViewMode('operations-floor')}
-                disabled={!activeProject}
-                title={!activeProject ? 'Choose a project first' : 'Open the project office'}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                  viewMode === 'operations-floor'
-                    ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
-                    : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Briefcase className="w-4 h-4 text-emerald-400" />
-                  <span>Office Floor</span>
+                  <span>Canvas editor</span>
                 </div>
               </button>
             </div>
@@ -408,7 +418,7 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
                 }`}
               >
                 <BookOpen className="w-4 h-4 text-amber-400" />
-                <span>Architecture 101</span>
+                <span>Canvas guide</span>
               </button>
             </div>
           </div>
@@ -419,10 +429,10 @@ export const PaperclipNav: React.FC<PaperclipNavProps> = ({
           isDark ? 'border-[#27272a] text-zinc-400' : 'border-zinc-200 text-zinc-600'
         }`}>
           <div className="flex items-center gap-2.5 truncate">
-            <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
-              U
+            <div className={`w-6 h-6 rounded-md border flex items-center justify-center shrink-0 ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'}`}>
+              <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />
             </div>
-            <span className="truncate text-xs font-mono">Operator</span>
+            <span className="truncate text-xs">Local workspace</span>
           </div>
 
           <div className="flex items-center gap-1">

@@ -76,6 +76,8 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
   };
 
   const handleDeleteIssue = (id: string) => {
+    const issueToDelete = issues.find((issue) => issue.id === id);
+    if (!issueToDelete || !window.confirm(`Delete ${issueToDelete.key}: “${issueToDelete.title}”? This cannot be undone.`)) return;
     const updated = issues.filter(i => i.id !== id);
     updateIssuesList(updated);
     if (selectedIssueId === id) {
@@ -206,7 +208,9 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
               </button>
             </div>
             <input
+              id="new-task-title"
               type="text"
+              aria-label="Task title"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="e.g. Implement user login flow with JWT validation"
@@ -219,6 +223,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
               <select
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value as any)}
+                aria-label="Initial task status"
                 className={`px-3 py-1.5 rounded-lg border text-xs ${
                   isDark ? 'bg-[#18181c] border-[#27272a] text-zinc-200' : 'bg-white border-zinc-300 text-zinc-800'
                 }`}
@@ -268,6 +273,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             <div className="space-y-1.5">
               <button
                 onClick={() => toggleGroup('in_progress')}
+                aria-expanded={!collapsedGroups.in_progress}
                 className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold mb-2"
               >
                 {collapsedGroups.in_progress ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -281,8 +287,18 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                     return (
                       <div
                         key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        aria-label={`Select task ${item.key}: ${item.title}`}
                         onClick={() => setSelectedIssueId(item.id)}
-                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.currentTarget.click();
+                          }
+                        }}
+                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                           isSelected
                             ? isDark
                               ? 'bg-[#18181c] border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
@@ -315,6 +331,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             <div className="space-y-1.5">
               <button
                 onClick={() => toggleGroup('todo')}
+                aria-expanded={!collapsedGroups.todo}
                 className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold mb-2"
               >
                 {collapsedGroups.todo ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -328,8 +345,18 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                     return (
                       <div
                         key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        aria-label={`Select task ${item.key}: ${item.title}`}
                         onClick={() => setSelectedIssueId(item.id)}
-                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.currentTarget.click();
+                          }
+                        }}
+                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                           isSelected
                             ? isDark
                               ? 'bg-[#18181c] border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
@@ -362,6 +389,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             <div className="space-y-1.5">
               <button
                 onClick={() => toggleGroup('blocked')}
+                aria-expanded={!collapsedGroups.blocked}
                 className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold mb-2"
               >
                 {collapsedGroups.blocked ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -375,8 +403,18 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                     return (
                       <div
                         key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        aria-label={`Select task ${item.key}: ${item.title}`}
                         onClick={() => setSelectedIssueId(item.id)}
-                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.currentTarget.click();
+                          }
+                        }}
+                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                           isSelected
                             ? isDark
                               ? 'bg-[#18181c] border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
@@ -409,6 +447,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             <div className="space-y-1.5">
               <button
                 onClick={() => toggleGroup('done')}
+                aria-expanded={!collapsedGroups.done}
                 className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-zinc-400 font-semibold mb-2"
               >
                 {collapsedGroups.done ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -422,8 +461,18 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                     return (
                       <div
                         key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        aria-label={`Select task ${item.key}: ${item.title}`}
                         onClick={() => setSelectedIssueId(item.id)}
-                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer opacity-70 hover:opacity-100 transition-all ${
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.currentTarget.click();
+                          }
+                        }}
+                        className={`group px-3.5 py-3 rounded-xl border flex items-center justify-between cursor-pointer opacity-70 hover:opacity-100 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                           isSelected
                             ? isDark
                               ? 'bg-[#18181c] border-zinc-500 ring-1 ring-zinc-500/40'
@@ -475,6 +524,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                 <select
                   value={selectedIssue.status}
                   onChange={(e) => handleStatusChange(e.target.value as any)}
+                  aria-label={`Status for ${selectedIssue.key}`}
                   className={`px-2.5 py-1 rounded-md border text-xs font-semibold focus:outline-none ${
                     selectedIssue.status === 'in_progress'
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
@@ -495,6 +545,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
                 <button
                   onClick={() => handleDeleteIssue(selectedIssue.id)}
                   title="Delete Task"
+                  aria-label={`Delete ${selectedIssue.key}`}
                   className={`p-1 rounded-md border transition-colors ${
                     isDark ? 'border-zinc-700 hover:border-red-500 hover:text-red-400 text-zinc-400' : 'border-zinc-200 hover:border-red-500 hover:text-red-500 text-zinc-500'
                   }`}
@@ -572,6 +623,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
             {/* Comment input form */}
             <form onSubmit={handleAddComment} className="pt-4 flex items-center gap-2">
               <input
+                aria-label="Add a task comment"
                 type="text"
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
@@ -583,6 +635,7 @@ export const IssuesView: React.FC<IssuesViewProps> = ({
               <button
                 type="submit"
                 disabled={!newCommentText.trim()}
+                aria-label="Post comment"
                 className="p-2 rounded-lg bg-white text-black hover:bg-zinc-200 disabled:opacity-40 transition-colors shadow-sm"
               >
                 <Send className="w-3.5 h-3.5" />

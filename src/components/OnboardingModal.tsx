@@ -293,7 +293,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     • <strong>Tasks</strong> are saved with the project and do not start an agent run.
                   </p>
                   <p className="text-xs text-zinc-300">
-                    • <strong>Session Activity</strong> can inspect selected JSON or JSONL transcripts. It cannot send prompts or control an agent.
+                    • <strong>Saved transcripts</strong> can be inspected as JSON or JSONL. Formative cannot send prompts or control an agent.
                   </p>
                 </div>
               </div>

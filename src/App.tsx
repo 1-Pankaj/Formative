@@ -21,10 +21,12 @@ import { NewProjectModal } from './components/NewProjectModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ContextMenu } from './components/ContextMenu';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { ProjectHomeView } from './components/ProjectHomeView';
+import { AgentChatView, type StartChatRun } from './components/AgentChatView';
+import { ArchitectureMapView } from './components/ArchitectureMapView';
 import { OnboardingModal } from './components/OnboardingModal';
 import { TelemetryConnectView } from './components/TelemetryConnectView';
 import { OfficeFloorView } from './components/office/OfficeFloorView';
-import { OrgChartView } from './components/OrgChartView';
 import { IssuesView } from './components/IssuesView';
 import { InteractiveGuide } from './components/InteractiveGuide';
 import { PaperclipCardNode } from './components/nodes/PaperclipCardNode';
@@ -47,6 +49,8 @@ import {
   SkillDepartment,
   IssueItem
 } from './types';
+import type { AgentProviderId, AgentProviderStatus, AgentRun, AgentRunEvent, AgentRunStreamEvent, StartAgentRunRequest } from './types/agentRuns';
+import type { ArchitectureMap, ArchitectureSourceFile, ArchitectureSourceSummary } from './types/architectureMap';
 import { 
   Layers, 
   Activity, 
@@ -54,11 +58,7 @@ import {
   Maximize2, 
   Save, 
   BookOpen, 
-  Crown, 
   Plus, 
-  Sparkles,
-  Sliders,
-  CheckCircle2
 } from 'lucide-react';
 
 declare global {
@@ -67,6 +67,12 @@ declare global {
       selectDirectory: () => Promise<string | null>;
       selectTranscriptFile: () => Promise<string | null>;
       scanProjectDirectory: (path: string) => Promise<{ success: boolean; project?: Project; error?: string }>;
+      readArchitectureSources: (path: string) => Promise<{
+        success: boolean;
+        sources?: ArchitectureSourceFile[];
+        summary?: ArchitectureSourceSummary;
+        error?: string;
+      }>;
       getSavedProjects: () => Promise<Project[] | null>;
       saveProjects: (projects: Project[]) => Promise<{ success: boolean; error?: string }>;
       getAgentSessions: (providerId?: string) => Promise<{ success: boolean; sessions: AgentSession[]; error?: string }>;
@@ -74,6 +80,10 @@ declare global {
       startWatchingTranscript: (path: string) => Promise<{ success: boolean; error?: string }>;
       stopWatchingTranscript: () => Promise<{ success: boolean }>;
       onLiveTranscriptUpdate: (cb: (steps: AgentTranscriptStep[]) => void) => () => void;
+      getAgentProviderStatuses: () => Promise<{ success: boolean; providers: AgentProviderStatus[]; error?: string }>;
+      startAgentRun: (request: StartAgentRunRequest) => Promise<{ success: boolean; runId?: string; providerSessionId?: string; error?: string }>;
+      stopAgentRun: (request: { projectId: string; runId: string }) => Promise<{ success: boolean; stopped?: boolean; error?: string }>;
+      onAgentRunEvent: (cb: (payload: AgentRunStreamEvent) => void) => () => void;
     };
   }
 }
@@ -134,10 +144,11 @@ export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
       const cachedId = localStorage.getItem('formative_active_project_id');
-      if (cachedId) return 'architecture';
+      if (cachedId) return 'project-home';
     } catch (_) {}
     return 'welcome';
   });
+  const [canvasView, setCanvasView] = useState<'canvas' | 'architecture-map'>('canvas');
 
   const [flowLayout, setFlowLayout] = useState<FlowLayout>('tree');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -150,6 +161,8 @@ export const App: React.FC = () => {
   const [sessions, setSessions] = useState<AgentSession[]>([]);
   const [activeSession, setActiveSession] = useState<AgentSession | null>(null);
   const [rawAgentSteps, setRawAgentSteps] = useState<AgentTranscriptStep[]>([]);
+  const [agentProviderStatuses, setAgentProviderStatuses] = useState<AgentProviderStatus[]>([]);
+  const [isCheckingAgentProviders, setIsCheckingAgentProviders] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<ToastState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
@@ -157,14 +170,58 @@ export const App: React.FC = () => {
   const flowInstanceRef = useRef<any>(null);
   const flowContainerRef = useRef<HTMLDivElement>(null);
 
+  // Keep the full diagram reachable when the desktop window or inspector changes the canvas size.
+  useEffect(() => {
+    const container = flowContainerRef.current;
+    if (!container || viewMode !== 'architecture' || canvasView !== 'canvas') return;
+
+    let resizeTimer: number | undefined;
+    const observer = new ResizeObserver(() => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        flowInstanceRef.current?.fitView({ padding: 0.18, duration: 140 });
+      }, 120);
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(resizeTimer);
+    };
+  }, [canvasView, viewMode]);
+
   const activeProject = useMemo(
     () => (activeProjectId ? projects.find((p) => p.id === activeProjectId) || null : null),
     [projects, activeProjectId]
   );
 
+  useEffect(() => {
+    setCanvasView('canvas');
+  }, [activeProjectId]);
+
   const [nodes, setNodes, onNodesChange] = useNodesState(activeProject?.nodes || []);
   const [edges, setEdges, onEdgesChange] = useEdgesState(activeProject?.edges || []);
   const [canvasProjectId, setCanvasProjectId] = useState<string | null>(null);
+  const pendingCanvasFitRef = useRef(false);
+
+  useEffect(() => {
+    if (viewMode === 'architecture' && canvasView === 'canvas') pendingCanvasFitRef.current = true;
+  }, [activeProjectId, canvasView, viewMode]);
+
+  // Project data can arrive after React Flow's built-in initial fit. Fit once after the
+  // selected project's canvas state is loaded, so compact windows open with the whole map visible.
+  useEffect(() => {
+    if (!pendingCanvasFitRef.current || viewMode !== 'architecture' || canvasView !== 'canvas' || !activeProject || canvasProjectId !== activeProject.id) return;
+    if (nodes.length === 0) {
+      pendingCanvasFitRef.current = false;
+      return;
+    }
+    const fitTimer = window.setTimeout(() => {
+      flowInstanceRef.current?.fitView({ padding: 0.18, duration: 140 });
+      pendingCanvasFitRef.current = false;
+    }, 160);
+    return () => window.clearTimeout(fitTimer);
+  }, [activeProject, canvasProjectId, canvasView, nodes.length, viewMode]);
 
   const writeProjectsToDisk = useCallback(async (snapshot: Project[]) => {
     if (!window.formativeApi) return true;
@@ -252,6 +309,196 @@ export const App: React.FC = () => {
       setToastMessage(null);
     }, action ? 5000 : 3000);
   }, []);
+
+  const refreshAgentProviderStatuses = useCallback(async () => {
+    if (!window.formativeApi) {
+      setAgentProviderStatuses([]);
+      return;
+    }
+    setIsCheckingAgentProviders(true);
+    try {
+      const result = await window.formativeApi.getAgentProviderStatuses();
+      setAgentProviderStatuses(result.providers || []);
+      if (!result.success && result.error) showToast(result.error);
+    } catch (error) {
+      setAgentProviderStatuses([]);
+      showToast(error instanceof Error ? error.message : 'Formative could not check local agent installations.');
+    } finally {
+      setIsCheckingAgentProviders(false);
+    }
+  }, [showToast]);
+
+  const handleAgentRunEvent = useCallback((payload: AgentRunStreamEvent) => {
+    if (!payload?.projectId || !payload.runId || !payload.event?.id) return;
+    const currentProjects = projectsRef.current;
+    let changed = false;
+    const updatedProjects = currentProjects.map((project) => {
+      if (project.id !== payload.projectId) return project;
+      const runIndex = (project.agentRuns || []).findIndex((run) => run.id === payload.runId && run.conversationId === payload.conversationId);
+      if (runIndex < 0) return project;
+
+      const existingRuns = project.agentRuns || [];
+      const existingRun = existingRuns[runIndex];
+      const events = [...existingRun.events];
+      const eventIndex = events.findIndex((item) => item.id === payload.event.id);
+      if (eventIndex < 0) events.push(payload.event);
+      else events[eventIndex] = payload.event;
+      events.sort((a, b) => a.sequence - b.sequence);
+      const boundedEvents = events.slice(-80);
+      const status = payload.status || existingRun.status;
+      const isFinished = status === 'completed' || status === 'cancelled' || status === 'failed';
+      const updatedAt = payload.event.occurredAt;
+      const updatedRun: AgentRun = {
+        ...existingRun,
+        status,
+        events: boundedEvents,
+        updatedAt,
+        ...(isFinished ? { finishedAt: updatedAt } : {}),
+      };
+      const agentRuns = [...existingRuns];
+      agentRuns[runIndex] = updatedRun;
+      const agentConversations = (project.agentConversations || []).map((conversation) =>
+        conversation.id === payload.conversationId
+          ? {
+              ...conversation,
+              ...(payload.providerSessionId ? { providerSessionId: payload.providerSessionId } : {}),
+              updatedAt,
+            }
+          : conversation
+      );
+      changed = true;
+      return { ...project, agentRuns, agentConversations, updatedAt };
+    });
+    if (changed) void persistProjects(updatedProjects, false);
+  }, [persistProjects]);
+
+  useEffect(() => {
+    if (!window.formativeApi) return;
+    return window.formativeApi.onAgentRunEvent(handleAgentRunEvent);
+  }, [handleAgentRunEvent]);
+
+  const handleStartAgentRun = useCallback(async (request: StartChatRun) => {
+    const project = projectsRef.current.find((item) => item.id === activeProjectId);
+    if (!project) return { success: false, error: 'Choose a project before starting an agent.' };
+    if (!project.folderPath) return { success: false, error: 'Choose a local project folder before starting an agent.' };
+    if (!window.formativeApi) return { success: false, error: 'Agent runs are available in the desktop app.' };
+    if (request.providerId !== 'codex-cli' && request.providerId !== 'claude-code') {
+      return { success: false, error: 'This provider is not enabled for runs yet.' };
+    }
+    if (!request.prompt.trim() || request.prompt.length > 20000) return { success: false, error: 'Write a message up to 20,000 characters before starting a run.' };
+
+    const now = new Date().toISOString();
+    const previousConversations = project.agentConversations || [];
+    const previousRuns = project.agentRuns || [];
+    if (previousConversations.length >= 100 || previousRuns.length >= 50) {
+      return { success: false, error: 'This project reached the current conversation history limit. Review saved conversations before starting another.' };
+    }
+    let conversation = previousConversations.find((item) => item.id === request.conversationId);
+    if (conversation && conversation.providerId !== request.providerId) {
+      return { success: false, error: 'Start a new conversation to switch providers.' };
+    }
+    if (!conversation) {
+      const title = request.prompt.trim().replace(/\s+/g, ' ');
+      conversation = {
+        id: request.conversationId,
+        providerId: request.providerId,
+        title: title.length > 72 ? `${title.slice(0, 71)}…` : title,
+        ...(request.taskId ? { taskId: request.taskId } : {}),
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
+    const run: AgentRun = {
+      id: createLocalId('run'),
+      conversationId: conversation.id,
+      providerId: request.providerId,
+      ...(request.taskId ? { taskId: request.taskId } : {}),
+      prompt: request.prompt.trim(),
+      permissionMode: 'read-only',
+      status: 'starting',
+      createdAt: now,
+      updatedAt: now,
+      events: [],
+    };
+    const updatedProject: Project = {
+      ...project,
+      agentConversations: conversation === previousConversations.find((item) => item.id === conversation?.id)
+        ? previousConversations.map((item) => item.id === conversation?.id ? { ...item, taskId: request.taskId, updatedAt: now } : item)
+        : [...previousConversations, conversation],
+      agentRuns: [...previousRuns, run],
+      updatedAt: now,
+    };
+    const saved = await persistProjects(projectsRef.current.map((item) => item.id === project.id ? updatedProject : item), true);
+    if (!saved) return { success: false, error: 'The project could not save this conversation before starting the run.' };
+
+    const recordRunStartFailure = (message: string) => {
+      const finishedAt = new Date().toISOString();
+      const failedProject = projectsRef.current.find((item) => item.id === project.id) || updatedProject;
+      const failedRuns = (failedProject.agentRuns || []).map((item) => item.id === run.id
+        ? {
+            ...item,
+            status: 'failed' as const,
+            updatedAt: finishedAt,
+            finishedAt,
+            events: [{ id: `event-${run.id}`, sequence: 1, type: 'error' as const, occurredAt: finishedAt, summary: message }],
+          }
+        : item
+      );
+      void persistProjects(projectsRef.current.map((item) => item.id === project.id ? { ...failedProject, agentRuns: failedRuns } : item), false);
+    };
+
+    const startRequest: StartAgentRunRequest = {
+      runId: run.id,
+      projectId: project.id,
+      projectPath: project.folderPath,
+      conversationId: conversation.id,
+      providerId: request.providerId,
+      ...(conversation.providerSessionId ? { providerSessionId: conversation.providerSessionId } : {}),
+      ...(request.taskId ? { taskId: request.taskId } : {}),
+      prompt: request.prompt.trim(),
+      permissionMode: 'read-only',
+    };
+    try {
+      const result = await window.formativeApi.startAgentRun(startRequest);
+      if (!result.success) {
+        const message = result.error || 'Formative could not start this run.';
+        recordRunStartFailure(message);
+        return { success: false, error: message };
+      }
+      if (result.providerSessionId) {
+        const latestProject = projectsRef.current.find((item) => item.id === project.id) || updatedProject;
+        void persistProjects(projectsRef.current.map((item) => item.id === project.id
+          ? {
+              ...latestProject,
+              agentConversations: (latestProject.agentConversations || []).map((item) => item.id === conversation!.id
+                ? { ...item, providerSessionId: result.providerSessionId, updatedAt: new Date().toISOString() }
+                : item),
+            }
+          : item
+        ), false);
+      }
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Formative could not start this run.';
+      recordRunStartFailure(message);
+      return { success: false, error: message };
+    }
+  }, [activeProjectId, persistProjects]);
+
+  const handleStopAgentRun = useCallback(async (runId: string) => {
+    if (!window.formativeApi || !activeProjectId) return;
+    try {
+      const result = await window.formativeApi.stopAgentRun({ projectId: activeProjectId, runId });
+      if (!result.success) showToast(result.error || 'Formative could not stop this run.');
+      else if (!result.stopped) showToast('This agent run is no longer active.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Formative could not stop this run.');
+    }
+  }, [activeProjectId, showToast]);
+
+  useEffect(() => {
+    if (viewMode === 'agent-chat' && activeProject) void refreshAgentProviderStatuses();
+  }, [viewMode, activeProject?.id, refreshAgentProviderStatuses]);
 
   const activeSkills: SkillDepartment[] = useMemo(() => {
     return activeProject?.officeConfig?.activeSkills || [];
@@ -373,6 +620,33 @@ export const App: React.FC = () => {
     return Promise.resolve(true);
   }, [activeProjectId, edges, flushPendingProjectSave, nodes, persistProjects, viewMode]);
 
+  const handleSaveArchitectureMap = useCallback(async (architectureMap: ArchitectureMap) => {
+    if (!activeProject) return;
+    const updatedProjects = projectsRef.current.map((project) => project.id === activeProject.id
+      ? { ...project, architectureMap, updatedAt: new Date().toISOString() }
+      : project
+    );
+    const saved = await persistProjects(updatedProjects, true);
+    showToast(saved ? 'Architecture map updated.' : 'The map was created, but Formative could not save it to the desktop project file.');
+  }, [activeProject, persistProjects, showToast]);
+
+  const handleReadArchitectureSources = useCallback((folderPath: string) => {
+    if (!window.formativeApi) return Promise.resolve({ success: false, error: 'Open Formative desktop to analyze a local project.' });
+    return window.formativeApi.readArchitectureSources(folderPath);
+  }, []);
+
+  const handleChangeCanvasView = useCallback(async (nextView: 'canvas' | 'architecture-map') => {
+    if (nextView === canvasView) return;
+    const saved = await flushCanvasChanges();
+    if (!saved) {
+      showToast('Recent canvas edits could not be saved. Try again before switching views.');
+      return;
+    }
+    setSelectedNodeId(null);
+    setContextMenu(null);
+    setCanvasView(nextView);
+  }, [canvasView, flushCanvasChanges, showToast]);
+
   const clearActiveTranscript = useCallback(() => {
     setActiveSession(null);
     setIsTranscriptWatching(false);
@@ -390,7 +664,7 @@ export const App: React.FC = () => {
     if (activeProjectId !== id) clearActiveTranscript();
     setActiveProjectId(id);
     localStorage.setItem('formative_active_project_id', id);
-    setViewMode('architecture');
+    setViewMode('project-home');
   }, [activeProjectId, clearActiveTranscript, flushCanvasChanges, showToast]);
 
   const requestViewMode = useCallback(async (mode: ViewMode) => {
@@ -664,15 +938,21 @@ export const App: React.FC = () => {
         return;
       }
       const existingProject = projectsRef.current.find((project) => project.id === newProject.id);
-      const projectToOpen = existingProject || newProject;
+      const projectToOpen = existingProject
+        ? { ...existingProject, scanSummary: newProject.scanSummary || existingProject.scanSummary }
+        : newProject;
       let persisted = true;
       if (!existingProject) {
         persisted = await persistProjects([newProject, ...projectsRef.current], true);
+      } else if (newProject.scanSummary) {
+        persisted = await persistProjects(projectsRef.current.map((project) =>
+          project.id === existingProject.id ? projectToOpen : project
+        ), true);
       }
       if (activeProjectId !== projectToOpen.id) clearActiveTranscript();
       setActiveProjectId(projectToOpen.id);
       localStorage.setItem('formative_active_project_id', projectToOpen.id);
-      setViewMode('architecture');
+      setViewMode('project-home');
       setIsLaunchpadOpen(false);
       showToast(existingProject
         ? `Opened ${existingProject.name}; saved canvas and tasks were kept.`
@@ -735,7 +1015,7 @@ export const App: React.FC = () => {
     clearActiveTranscript();
     setActiveProjectId(newProj.id);
     localStorage.setItem('formative_active_project_id', newProj.id);
-    setViewMode('architecture');
+    setViewMode('project-home');
     showToast(persisted ? `Created project: ${name}` : 'Project created in recovery storage; desktop saving has a problem.');
   };
 
@@ -749,7 +1029,7 @@ export const App: React.FC = () => {
     clearActiveTranscript();
     setActiveProjectId(project.id);
     localStorage.setItem('formative_active_project_id', project.id);
-    setViewMode('architecture');
+    setViewMode('project-home');
     showToast(persisted ? `Created project: ${project.name}` : 'Project created in recovery storage; desktop saving has a problem.');
   };
 
@@ -777,7 +1057,7 @@ export const App: React.FC = () => {
     clearActiveTranscript();
     setActiveProjectId(newProj.id);
     localStorage.setItem('formative_active_project_id', newProj.id);
-    setViewMode('architecture');
+    setViewMode('project-home');
     showToast(persisted ? `Opened the ${newProj.name} starter example.` : 'Example opened in recovery storage; desktop saving has a problem.');
   };
 
@@ -816,7 +1096,7 @@ export const App: React.FC = () => {
         if (wasActive) {
           setActiveProjectId(removed.id);
           localStorage.setItem('formative_active_project_id', removed.id);
-          setViewMode('architecture');
+          setViewMode('project-home');
         }
         setToastMessage(null);
       },
@@ -1038,44 +1318,47 @@ export const App: React.FC = () => {
       {/* 2. MAIN WORKSPACE FRAME */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Paperclip Top Header Bar */}
-        <header className={`h-12 border-b px-3 xl:px-5 flex items-center justify-between gap-2 shrink-0 select-none z-20 ${
+        <header className={`h-12 border-b px-3 xl:px-5 flex min-w-0 items-center justify-between gap-2 shrink-0 select-none z-20 ${
           isDark ? 'bg-[#09090b] border-[#27272a] text-zinc-300' : 'bg-white border-zinc-200 text-zinc-800'
         }`}>
           {/* Left: Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-xs">
             <button
               onClick={() => { void requestViewMode('welcome'); }}
-              className={`font-medium transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
+              title={activeProject?.name || 'Formative'}
+              className={`min-w-0 max-w-[min(38vw,28rem)] truncate text-left font-medium transition-colors ${isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-black'}`}
             >
               {activeProject ? activeProject.name : 'Formative'}
             </button>
-            <span className="text-zinc-600">/</span>
-        <span className={`font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
-              {viewMode === 'architecture'
-                ? (activeProject?.source === 'folder-map' ? 'Folder Map' : 'Project Canvas')
-                : viewMode === 'org-chart'
-                ? 'Agent Team'
+            <span className="shrink-0 text-zinc-600">/</span>
+        <span className={`shrink-0 font-semibold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+              {viewMode === 'project-home'
+                ? 'Overview'
+                : viewMode === 'architecture'
+                ? 'Canvas editor'
                 : viewMode === 'issues'
                 ? 'Tasks & Issues'
+                : viewMode === 'agent-chat'
+                ? 'Agent chat'
                 : viewMode === 'operations-floor'
                 ? 'Office Floor'
                 : viewMode === 'agent-flow'
-                ? 'Session Activity'
+                ? 'Saved transcripts'
                 : 'Welcome'}
             </span>
           </div>
 
           {/* Right: Context Actions */}
-          <div className="flex items-center gap-2.5">
-            {viewMode === 'architecture' && activeProject && (
+          <div className="flex shrink-0 items-center gap-1.5 xl:gap-2.5">
+            {viewMode === 'architecture' && canvasView === 'canvas' && activeProject && (
               <>
                 <button
                   onClick={handleAutoLayout}
                   title="Arrange the canvas into a tree layout"
-                  className="px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                  className="px-2 xl:px-3 py-1.5 rounded-lg bg-white text-black hover:bg-zinc-200 font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
                 >
                   <Network className="w-3.5 h-3.5" />
-                  <span>Arrange</span>
+                  <span className="hidden xl:inline">Arrange</span>
                 </button>
 
                 <button
@@ -1086,7 +1369,7 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
-                  <span>Fit</span>
+                  <span className="hidden xl:inline">Fit</span>
                 </button>
 
                 <button
@@ -1097,18 +1380,9 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Save</span>
+                  <span className="hidden xl:inline">Save</span>
                 </button>
               </>
-            )}
-
-            {viewMode === 'org-chart' && (
-              <div className={`text-xs px-3 py-1 rounded-full border flex items-center gap-2 ${
-                isDark ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
-              }`}>
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                <span>Project organization</span>
-              </div>
             )}
 
             {viewMode === 'agent-flow' && activeSession && (
@@ -1126,13 +1400,13 @@ export const App: React.FC = () => {
             {/* Quick Guide Button */}
             <button
               onClick={() => setIsGuideOpen(true)}
-              title="Open Architecture Guide 101"
-              className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
+              title="Open the project canvas guide"
+              className={`px-2 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
                 isDark ? 'bg-[#18181c] border-[#27272a] text-zinc-400 hover:text-white hover:bg-zinc-800' : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:text-black hover:bg-zinc-200'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>Guide 101</span>
+              <span className="hidden xl:inline">Canvas guide</span>
             </button>
           </div>
         </header>
@@ -1158,13 +1432,66 @@ export const App: React.FC = () => {
 
         {/* Main Viewport Content */}
         <div className="flex-1 overflow-hidden relative flex flex-col min-h-0 min-w-0">
-          {viewMode === 'org-chart' ? (
-            <OrgChartView theme={theme} onOpenSessionActivity={() => { void requestViewMode('agent-flow'); }} />
+          {viewMode === 'architecture' && activeProject && (
+            <div className={`flex min-h-11 shrink-0 items-center justify-between gap-3 border-b px-3 ${isDark ? 'border-zinc-800 bg-[#0e0e11]' : 'border-zinc-200 bg-white'}`}>
+              <div role="group" aria-label="Canvas editor views" className={`flex min-w-0 items-center gap-1 rounded-lg border p-1 ${isDark ? 'border-zinc-800 bg-zinc-950' : 'border-zinc-200 bg-zinc-100'}`}>
+                <button
+                  type="button"
+                  aria-pressed={canvasView === 'canvas'}
+                  onClick={() => { void handleChangeCanvasView('canvas'); }}
+                  className={`max-w-[42vw] truncate rounded-md px-3 py-1.5 text-[11px] font-medium transition-colors ${canvasView === 'canvas'
+                    ? isDark ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm'
+                    : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-600 hover:text-zinc-900'}`}
+                >
+                  {activeProject.source === 'folder-map' ? 'Project structure' : 'Canvas diagram'}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={canvasView === 'architecture-map'}
+                  onClick={() => { void handleChangeCanvasView('architecture-map'); }}
+                  className={`max-w-[42vw] truncate rounded-md px-3 py-1.5 text-[11px] font-medium transition-colors ${canvasView === 'architecture-map'
+                    ? isDark ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm'
+                    : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-600 hover:text-zinc-900'}`}
+                >
+                  Architecture map
+                </button>
+              </div>
+              {canvasView === 'architecture-map' && <span className={`hidden truncate text-[10px] sm:inline ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>Generated from local code · read-only</span>}
+            </div>
+          )}
+          {viewMode === 'architecture' && canvasView === 'architecture-map' && activeProject ? (
+            <ArchitectureMapView
+              key={activeProject.id}
+              project={activeProject}
+              theme={theme}
+              isDesktopApp={Boolean(window.formativeApi)}
+              onReadSources={handleReadArchitectureSources}
+              onSaveMap={handleSaveArchitectureMap}
+            />
+          ) : viewMode === 'agent-chat' && activeProject ? (
+            <AgentChatView
+              theme={theme}
+              project={activeProject}
+              isDesktopApp={Boolean(window.formativeApi)}
+              onOpenProjectLibrary={() => setIsLaunchpadOpen(true)}
+              providerStatuses={agentProviderStatuses}
+              isCheckingProviders={isCheckingAgentProviders}
+              onRefreshProviders={() => { void refreshAgentProviderStatuses(); }}
+              onStartRun={handleStartAgentRun}
+              onStopRun={handleStopAgentRun}
+            />
           ) : viewMode === 'issues' ? (
             <IssuesView 
               theme={theme} 
               activeProject={activeProject}
               onUpdateProjectIssues={handleUpdateProjectIssues}
+            />
+          ) : viewMode === 'project-home' && activeProject ? (
+            <ProjectHomeView
+              theme={theme}
+              project={activeProject}
+              activeTranscriptTitle={activeSession?.title || null}
+              onNavigate={(mode) => { void requestViewMode(mode); }}
             />
           ) : viewMode === 'welcome' || (!activeProject && viewMode !== 'agent-flow') ? (
             <WelcomeScreen
@@ -1242,22 +1569,22 @@ export const App: React.FC = () => {
                     variant={BackgroundVariant.Dots} 
                   />
                   <Controls position="bottom-left" showInteractive={false} />
-                  <MiniMap position="bottom-right" />
+                  <MiniMap position="top-right" className="formative-canvas-minimap" />
 
                   {/* Mode Banner Indicator */}
                   <Panel position="top-left" className="m-3">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono shadow-sm ${
+                    <div className={`flex min-w-0 max-w-full items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono shadow-sm ${
                       isDark ? 'bg-[#121215] border-[#27272a] text-zinc-400' : 'bg-white border-zinc-200 text-zinc-600'
                     }`}>
                       {viewMode === 'architecture' ? (
                         <>
                           <Layers className="w-3.5 h-3.5 text-blue-400" />
-                          <span>{activeProject?.source === 'folder-map' ? 'FOLDER MAP' : 'PROJECT CANVAS'}: {activeProject?.name || 'Untitled'} ({nodes.length} items)</span>
+                          <span className="min-w-0 truncate">{activeProject?.source === 'folder-map' ? 'FOLDER MAP' : 'PROJECT CANVAS'}: {activeProject?.name || 'Untitled'} ({nodes.length} items)</span>
                         </>
                       ) : (
                         <>
                           <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>TRANSCRIPT: {activeSession?.provider || 'Transcript'} ({nodes.length} events)</span>
+                          <span className="min-w-0 truncate">TRANSCRIPT: {activeSession?.provider || 'Transcript'} ({nodes.length} events)</span>
                         </>
                       )}
                     </div>
@@ -1369,7 +1696,15 @@ export const App: React.FC = () => {
             <span className={`truncate max-w-[28vw] ${activeProject ? (isDark ? 'text-zinc-300' : 'text-black') : ''}`}>
               {activeProject ? activeProject.name : 'Choose a project'}
             </span>
-            {activeProject && <span className="hidden xl:inline shrink-0">{nodes.length} {activeProject.source === 'folder-map' ? 'items' : 'components'} · {edges.length} connections</span>}
+            {activeProject && viewMode === 'architecture' && canvasView === 'architecture-map' ? (
+              <span className="hidden xl:inline shrink-0">
+                {activeProject.architectureMap
+                  ? `${activeProject.architectureMap.modules.length} modules · ${activeProject.architectureMap.connections.length} code links`
+                  : 'Architecture map not analyzed'}
+              </span>
+            ) : activeProject ? (
+              <span className="hidden xl:inline shrink-0">{nodes.length} {activeProject.source === 'folder-map' ? 'items' : 'components'} · {edges.length} connections</span>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
@@ -1377,10 +1712,11 @@ export const App: React.FC = () => {
               <span className={`w-1.5 h-1.5 rounded-full ${projectSaveState === 'error' ? 'bg-red-400' : projectSaveState === 'saving' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
               <span>{!isProjectStoreReady ? 'Loading projects' : projectSaveState === 'error' ? 'Save issue' : projectSaveState === 'saving' ? 'Saving' : window.formativeApi ? 'Saved' : 'Preview storage'}</span>
             </span>
-            <span className="hidden sm:inline text-zinc-400">
-              {activeSession ? isTranscriptWatching ? 'Watching transcript' : 'Transcript selected' : 'No transcript selected'}
-            </span>
-            <span className="hidden 2xl:inline border-l border-zinc-700 pl-2 text-zinc-500">Agent runs unavailable</span>
+            {activeSession && (
+              <span className="hidden sm:inline text-zinc-400">
+                {isTranscriptWatching ? 'Monitoring transcript' : 'Transcript open'}
+              </span>
+            )}
           </div>
         </footer>
       </div>

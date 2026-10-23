@@ -60,8 +60,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <h1 className="text-xl font-bold tracking-tight">
                 Formative Studio
               </h1>
-              <p className="text-sm text-zinc-400 mt-0.5">
-                Projects, diagrams, tasks, and agent transcripts
+              <p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>
+                Projects, tasks, project canvases, and saved transcripts
               </p>
             </div>
           </div>
@@ -76,7 +76,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>Architecture Guide</span>
+              <span>Getting started</span>
             </button>
 
             <button
@@ -126,61 +126,60 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 {projects.map((proj) => (
                   <div
                     key={proj.id}
-                    onClick={() => onOpenProject(proj.id)}
-                    className={`group p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                    className={`group relative rounded-xl border transition-all ${
                       isDark
                         ? 'border-[#27272a] bg-[#121215] hover:border-zinc-500 hover:bg-[#18181c]'
                         : 'border-zinc-200 bg-zinc-50 hover:border-zinc-400 hover:bg-white shadow-xs'
                     }`}
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                    <button
+                      type="button"
+                      onClick={() => onOpenProject(proj.id)}
+                      aria-label={`Open project ${proj.name}`}
+                      className="flex w-full min-w-0 items-center gap-3.5 px-3.5 py-3.5 pr-12 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500"
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
                         isDark ? 'bg-zinc-800 text-zinc-200' : 'bg-zinc-200 text-zinc-800'
                       }`}>
                         {proj.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold truncate group-hover:underline">
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm font-semibold group-hover:underline">
                             {proj.name}
                           </span>
                           <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border uppercase ${
                             isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-400' : 'bg-zinc-100 border-zinc-200 text-zinc-600'
                           }`}>
-                            {proj.type || 'system'}
+                            {(proj.type || 'general').replace(/-/g, ' ')}
                           </span>
                           {proj.source && (
-                            <span className="text-[10px] font-mono uppercase text-zinc-500">
+                            <span className={`shrink-0 text-[10px] font-mono uppercase ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                               {proj.source === 'folder-map' ? 'Folder map' : 'Example'}
                             </span>
                           )}
-                        </div>
-                        <p className="text-xs text-zinc-400 truncate mt-0.5 max-w-sm">
+                        </span>
+                        <span className={`mt-0.5 block max-w-sm truncate text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>
                           {proj.description || `${proj.nodes?.length || 0} canvas items`}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-zinc-500 font-mono">
-                        {proj.nodes?.length || 0} {proj.source === 'folder-map' ? 'items' : 'components'}
+                        </span>
                       </span>
-                      {onDeleteProject && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteProject(proj.id);
-                          }}
-                          className={`p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
-                            isDark ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' : 'text-zinc-400 hover:text-red-600 hover:bg-zinc-100'
-                          }`}
-                          title="Remove project"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                      <span className={`hidden shrink-0 font-mono text-xs lg:block ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>
+                        {proj.nodes?.length || 0} canvas items
+                      </span>
+                    </button>
+                    {onDeleteProject && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteProject(proj.id)}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
+                          isDark ? 'text-zinc-400 hover:bg-zinc-800 hover:text-red-400' : 'text-zinc-600 hover:bg-zinc-100 hover:text-red-600'
+                        }`}
+                        title="Remove project"
+                        aria-label={`Remove ${proj.name} from Formative`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -192,7 +191,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             {/* Start Section */}
             <div className="space-y-3">
               <span className="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-400 block">
-                Start Working
+                Start a project
               </span>
 
               <div className="space-y-2">
@@ -253,8 +252,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       <Bot className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold">Session Activity</div>
-                      <div className="text-xs text-zinc-400 mt-0.5">{hasActiveProject ? 'Inspect a saved JSON or JSONL transcript. This does not start an agent.' : 'Choose a project first to inspect saved transcripts.'}</div>
+                      <div className="text-sm font-semibold">Saved transcripts</div>
+                      <div className="text-xs text-zinc-400 mt-0.5">{hasActiveProject ? 'Open a JSON or JSONL transcript to read recorded activity. This does not start an agent.' : 'Choose a project first to inspect a transcript.'}</div>
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-zinc-500" />

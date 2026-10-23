@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { pathToFileURL } = require('url');
+const { normalizeAgentHistory } = require('./agent-run-history.cjs');
+const { createAgentRunManager } = require('./agent-run-manager.cjs');
+const { readArchitectureSources } = require('./architecture-source-reader.cjs');
 
 let mainWindow = null;
 let activeWatcher = null;
@@ -10,6 +13,11 @@ const approvedDirectoryPaths = new Set();
 const approvedTranscriptPaths = new Set();
 const MAX_TRANSCRIPT_BYTES = 20 * 1024 * 1024;
 const MAX_PROJECTS_BYTES = 30 * 1024 * 1024;
+const agentRunManager = createAgentRunManager({
+  emitEvent: (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('agent-run-event', payload);
+  },
+});
 
 function isLoopbackHost(hostname) {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
@@ -88,6 +96,49 @@ function getProjectsFile() {
   return path.join(getAppDataPath(), 'projects.json');
 }
 
+function getSavedProjectForAgentRun(projectId, claimedPath) {
+  if (typeof projectId !== 'string' || !projectId.trim() || projectId.length > 128) {
+    throw new Error('Choose a saved project before starting an agent.');
+  }
+  const file = getProjectsFile();
+  if (!fs.existsSync(file)) throw new Error('Save the selected project before starting an agent.');
+  if (fs.statSync(file).size > MAX_PROJECTS_BYTES) throw new Error('Saved project data exceeds the supported limit.');
+  const projects = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!Array.isArray(projects)) throw new Error('Saved project data could not be read.');
+  const project = projects.find((item) => item && item.id === projectId);
+  if (!project) throw new Error('Choose a saved project before starting an agent.');
+
+  const savedPath = normalizedAbsolutePath(project.folderPath);
+  const requestedPath = normalizedAbsolutePath(claimedPath);
+  if (!savedPath || !requestedPath || savedPath !== requestedPath || !approvedDirectoryPaths.has(savedPath)) {
+    throw new Error('The agent can only run in the selected project folder. Open or select that project again, then retry.');
+  }
+  const realPath = path.normalize(path.resolve(fs.realpathSync(savedPath)));
+  if (realPath !== savedPath || !fs.statSync(realPath).isDirectory()) {
+    throw new Error('The selected project folder changed. Select it again before starting an agent.');
+  }
+  return { project, projectPath: realPath };
+}
+
+function formatAgentPrompt(prompt, task) {
+  if (!task) return prompt;
+  const cleanContext = (value, limit) => String(value || '').replace(/\u0000/g, '').trim().slice(0, limit);
+  const taskKey = cleanContext(task.key, 100);
+  const taskTitle = cleanContext(task.title, 500);
+  const taskStatus = cleanContext(task.status, 40);
+  const taskDescription = cleanContext(task.description, 4000) || 'No description provided.';
+  return [
+    'Formative task context selected by the user (use this as context for the user message below):',
+    `Task: ${taskKey}${taskKey ? ' — ' : ''}${taskTitle}`,
+    `Status: ${taskStatus}`,
+    'Description:',
+    taskDescription,
+    '',
+    "User's message:",
+    prompt,
+  ].join('\n');
+}
+
 async function readDirectorySample(directoryPath, limit) {
   const directory = await fs.promises.opendir(directoryPath);
   const entries = [];
@@ -156,14 +207,19 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  recoverInterruptedAgentRuns();
   createWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      recoverInterruptedAgentRuns();
+      createWindow();
+    }
   });
 });
 
 app.on('window-all-closed', () => {
+  agentRunManager.stopAll();
   if (activeWatcher) {
     activeWatcher.watcher.close();
     activeWatcher = null;
@@ -171,7 +227,71 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+app.on('before-quit', () => {
+  agentRunManager.stopAll();
+});
+
 // --- IPC HANDLERS ---
+
+handleAppIpc('get-agent-provider-statuses', async () => {
+  try {
+    return { success: true, providers: await agentRunManager.getStatuses() };
+  } catch {
+    return { success: false, providers: [], error: 'Formative could not check local agent installations.' };
+  }
+});
+
+handleAppIpc('start-agent-run', async (event, request) => {
+  try {
+    if (!request || typeof request !== 'object' || Array.isArray(request)) throw new Error('The agent run request is invalid.');
+    const providerId = request.providerId;
+    if (providerId !== 'codex-cli' && providerId !== 'claude-code') throw new Error('This provider is not enabled for runs yet.');
+    if (typeof request.runId !== 'string' || request.runId.length > 128 || !request.runId.trim()) throw new Error('The agent run ID is invalid.');
+    if (typeof request.conversationId !== 'string' || request.conversationId.length > 128 || !request.conversationId.trim()) throw new Error('Choose an agent conversation before starting a run.');
+    if (typeof request.prompt !== 'string' || !request.prompt.trim() || request.prompt.length > 20000) throw new Error('Write a message up to 20,000 characters before starting a run.');
+    if (request.permissionMode !== 'read-only') throw new Error('Only read-only agent runs are available in this first workflow.');
+
+    const { project, projectPath } = getSavedProjectForAgentRun(request.projectId, request.projectPath);
+    const { conversations, runs } = normalizeAgentHistory(project.agentConversations, project.agentRuns);
+    const conversation = conversations.find((item) => item.id === request.conversationId);
+    if (!conversation || conversation.providerId !== providerId) throw new Error('Save or select a conversation for this provider before starting a run.');
+    const pendingRun = runs.find((run) => run.id === request.runId && run.conversationId === request.conversationId);
+    const requestedTaskId = typeof request.taskId === 'string' && request.taskId ? request.taskId : undefined;
+    if (!pendingRun || pendingRun.providerId !== providerId || !['queued', 'starting'].includes(pendingRun.status) ||
+        pendingRun.prompt !== request.prompt.trim() || pendingRun.taskId !== requestedTaskId) {
+      throw new Error('Save the pending run in this project before starting it.');
+    }
+    let linkedTask;
+    if (request.taskId !== undefined && request.taskId !== null && request.taskId !== '') {
+      linkedTask = Array.isArray(project.issues) ? project.issues.find((issue) => issue && issue.id === request.taskId) : undefined;
+      if (!linkedTask) throw new Error('The selected task does not belong to this project.');
+    }
+    const started = agentRunManager.startRun({
+      runId: request.runId,
+      projectId: project.id,
+      projectPath,
+      conversationId: conversation.id,
+      providerId,
+      providerSessionId: conversation.providerSessionId,
+      prompt: formatAgentPrompt(request.prompt.trim(), linkedTask),
+      permissionMode: request.permissionMode,
+    }, projectPath);
+    return started;
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : 'Formative could not start this agent run.' };
+  }
+});
+
+handleAppIpc('stop-agent-run', async (event, request) => {
+  if (!request || typeof request !== 'object' || Array.isArray(request)) {
+    return { success: false, error: 'The stop request is invalid.' };
+  }
+  if (typeof request.runId !== 'string' || typeof request.projectId !== 'string') {
+    return { success: false, error: 'Choose a running agent task before stopping it.' };
+  }
+  const stopped = agentRunManager.stopRun(request.runId, request.projectId);
+  return { success: true, stopped };
+});
 
 // 1. Native Directory & File Selectors
 handleAppIpc('select-directory', async () => {
@@ -230,17 +350,69 @@ handleAppIpc('scan-project-directory', async (event, folderPath) => {
     const rootSample = await readDirectorySample(folderPath, 500);
     const entries = rootSample.entries;
 
-    let projectType = 'general';
-    const hasPackageJson = fs.existsSync(path.join(folderPath, 'package.json'));
-    const hasNextConfig = fs.existsSync(path.join(folderPath, 'next.config.js')) || fs.existsSync(path.join(folderPath, 'next.config.mjs')) || fs.existsSync(path.join(folderPath, 'next.config.ts'));
-    const hasPython = fs.existsSync(path.join(folderPath, 'requirements.txt')) || fs.existsSync(path.join(folderPath, 'pyproject.toml'));
-    const hasDocker = fs.existsSync(path.join(folderPath, 'docker-compose.yml')) || fs.existsSync(path.join(folderPath, 'Dockerfile'));
+    const isRegularFile = (relativePath) => {
+      try {
+        return fs.lstatSync(path.join(folderPath, relativePath)).isFile();
+      } catch {
+        return false;
+      }
+    };
+    const isRealDirectory = (relativePath) => {
+      try {
+        return fs.lstatSync(path.join(folderPath, relativePath)).isDirectory();
+      } catch {
+        return false;
+      }
+    };
+    const packageManifest = isRegularFile('package.json') ? 'package.json' : null;
+    const nextConfig = ['next.config.js', 'next.config.mjs', 'next.config.cjs', 'next.config.ts', 'next.config.mts', 'next.config.cts']
+      .find(isRegularFile) || null;
+    const pythonMarker = ['pyproject.toml', 'requirements.txt'].find(isRegularFile) || null;
+    const dockerMarker = ['Dockerfile', 'docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']
+      .find(isRegularFile) || null;
+    const hasSrcApp = isRealDirectory('src') && isRealDirectory(path.join('src', 'app'));
 
-    if (hasNextConfig || (hasPackageJson && fs.existsSync(path.join(folderPath, 'src', 'app')))) {
+    let projectType = 'general';
+    let suggestionReason = 'No supported language or framework marker was found, so Formative kept the type general.';
+    if (nextConfig) {
       projectType = 'web';
-    } else if (hasPython) {
+      suggestionReason = `A ${nextConfig} file was present at the project root.`;
+    } else if (pythonMarker) {
       projectType = 'backend';
+      suggestionReason = `${pythonMarker} was present at the project root.`;
+    } else if (packageManifest && hasSrcApp) {
+      projectType = 'web';
+      suggestionReason = 'package.json and the src/app directories were present at the project root.';
+    } else if (packageManifest) {
+      suggestionReason = 'A package.json file was present, but no supported framework marker was found.';
     }
+
+    const evidence = [];
+    if (packageManifest) evidence.push({
+      path: packageManifest,
+      observation: 'A regular file was found at the project root.',
+      meaning: 'This indicates a JavaScript or TypeScript package manifest exists. Formative did not read its contents or verify its dependencies.',
+    });
+    if (nextConfig) evidence.push({
+      path: nextConfig,
+      observation: 'A regular file was found at the project root.',
+      meaning: 'This suggests Next.js configuration is present. Formative did not inspect the configuration or verify that the project builds with it.',
+    });
+    if (pythonMarker) evidence.push({
+      path: pythonMarker,
+      observation: 'A regular file was found at the project root.',
+      meaning: 'This suggests Python project metadata or dependency configuration is present. Formative did not inspect its contents or install anything.',
+    });
+    if (dockerMarker) evidence.push({
+      path: dockerMarker,
+      observation: 'A regular file was found at the project root.',
+      meaning: 'This indicates a Docker-related configuration file exists. It does not confirm that an image can be built or run.',
+    });
+    if (!nextConfig && packageManifest && hasSrcApp) evidence.push({
+      path: 'src/app',
+      observation: 'The src and src/app directories were present.',
+      meaning: 'This directory pattern is one clue for a web project; it does not prove which framework or entry point is used.',
+    });
 
     const keyDirs = [];
     const rootFiles = [];
@@ -260,13 +432,31 @@ handleAppIpc('scan-project-directory', async (event, folderPath) => {
         } catch (e) {
           keyDirs.push({ name: ent.name, fileCount: 0, files: [], truncated: false });
         }
-      } else {
+      } else if (ent.isFile()) {
         rootFiles.push(ent.name);
       }
     }
 
     const nodes = [];
     const edges = [];
+    const scanSummary = {
+      inspectedAt: new Date().toISOString(),
+      rootEntryCount: entries.length,
+      rootEntryLimit: 500,
+      rootEntriesTruncated: rootSample.truncated,
+      visibleFolderCount: topLevelFolderCount,
+      mappedFolderCount: keyDirs.length,
+      visibleFileCount: rootFiles.length,
+      suggestedType: projectType,
+      suggestionReason,
+      evidence,
+      limitations: [
+        'The folder map uses directory and file names only; it does not read project source code.',
+        'Formative does not run project code, install packages, or build a dependency graph.',
+        'Hidden folders and generated folders such as node_modules, dist, and build are omitted.',
+        'At most 500 root entries, nine top-level folders, and 50 entries per mapped folder are sampled.',
+      ],
+    };
 
     // Core Root Node
     nodes.push({
@@ -278,7 +468,7 @@ handleAppIpc('scan-project-directory', async (event, folderPath) => {
         category: 'folder',
         subtitle: folderPath,
         description: `${rootSample.truncated ? 'Sampled first 500 entries. ' : ''}Project folder with ${topLevelFolderCount} visible top-level folders and ${rootFiles.length} visible top-level files in the sample.`,
-        tags: ['Folder map', projectType.toUpperCase(), ...(hasDocker ? ['Docker config found'] : [])],
+        tags: ['Folder map', projectType.toUpperCase(), ...(dockerMarker ? ['Docker config found'] : [])],
         status: 'idle',
       },
     });
@@ -321,15 +511,39 @@ handleAppIpc('scan-project-directory', async (event, folderPath) => {
         description: `Limited folder map from: ${folderPath}`,
         type: projectType,
         folderPath,
-        updatedAt: new Date().toISOString(),
-      issues: [],
-      nodes,
-      edges,
-    },
-  };
+      updatedAt: new Date().toISOString(),
+      folderMapCreatedAt: new Date().toISOString(),
+        issues: [],
+        nodes,
+        edges,
+        scanSummary,
+      },
+    };
 } catch (err) {
     console.error('Scan project error:', err);
     return { success: false, error: err.message };
+  }
+});
+
+// Read a bounded set of local source files only after the user has selected the project folder.
+// Parsing happens in a renderer worker; no project code is executed or sent to a service.
+handleAppIpc('read-architecture-sources', async (event, folderPath) => {
+  try {
+    if (!isApprovedDirectory(folderPath)) {
+      return { success: false, error: 'Choose this project folder in Formative before analyzing its code.' };
+    }
+    const normalizedPath = normalizedAbsolutePath(folderPath);
+    const realFolderPath = path.normalize(path.resolve(fs.realpathSync(folderPath)));
+    if (!normalizedPath || realFolderPath !== normalizedPath || !isApprovedDirectory(realFolderPath)) {
+      return { success: false, error: 'The selected project folder changed. Choose it again before analyzing its code.' };
+    }
+    const stat = await fs.promises.stat(realFolderPath);
+    if (!stat.isDirectory()) return { success: false, error: 'That project folder is no longer available.' };
+
+    return await readArchitectureSources(realFolderPath);
+  } catch (error) {
+    console.error('Architecture source read failed:', error);
+    return { success: false, error: 'Formative could not read the selected project source files.' };
   }
 });
 
@@ -685,6 +899,135 @@ function normalizeSavedProjects(value) {
     if (project.nextTaskNumber !== undefined && (!Number.isSafeInteger(project.nextTaskNumber) || project.nextTaskNumber < 1)) {
       throw new Error('A project has an invalid next-task number.');
     }
+    if (project.folderMapCreatedAt !== undefined && (typeof project.folderMapCreatedAt !== 'string' || project.folderMapCreatedAt.length > 64 || Number.isNaN(Date.parse(project.folderMapCreatedAt)))) {
+      throw new Error('A project has an invalid folder-map date.');
+    }
+    let scanSummary;
+    if (project.scanSummary !== undefined) {
+      const report = project.scanSummary;
+      const supportedTypes = ['web', 'mobile', 'backend', 'ai-system', 'general', 'roblox', 'ai-tool', 'realtime', 'data-pipeline'];
+      const isCount = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+      if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('A project scan report is invalid.');
+      if (typeof report.inspectedAt !== 'string' || report.inspectedAt.length > 64 || Number.isNaN(Date.parse(report.inspectedAt))) throw new Error('A project scan date is invalid.');
+      if (!isCount(report.rootEntryCount, 500) || !isCount(report.rootEntryLimit, 500) || !isCount(report.visibleFolderCount, 500) || !isCount(report.mappedFolderCount, 9) || !isCount(report.visibleFileCount, 500)) {
+        throw new Error('A project scan count is invalid.');
+      }
+      if (typeof report.rootEntriesTruncated !== 'boolean' || !supportedTypes.includes(report.suggestedType) || typeof report.suggestionReason !== 'string' || report.suggestionReason.length > 1000) {
+        throw new Error('A project scan summary is invalid.');
+      }
+      if (!Array.isArray(report.evidence) || report.evidence.length > 20 || !report.evidence.every((item) =>
+        item && typeof item === 'object' && !Array.isArray(item) &&
+        typeof item.path === 'string' && item.path.length > 0 && item.path.length <= 255 &&
+        typeof item.observation === 'string' && item.observation.length <= 500 &&
+        typeof item.meaning === 'string' && item.meaning.length <= 1000
+      )) throw new Error('A project scan evidence list is invalid.');
+      if (!Array.isArray(report.limitations) || report.limitations.length > 20 || !report.limitations.every((item) => typeof item === 'string' && item.length <= 500)) {
+        throw new Error('A project scan limitation list is invalid.');
+      }
+      scanSummary = {
+        inspectedAt: report.inspectedAt,
+        rootEntryCount: report.rootEntryCount,
+        rootEntryLimit: report.rootEntryLimit,
+        rootEntriesTruncated: report.rootEntriesTruncated,
+        visibleFolderCount: report.visibleFolderCount,
+        mappedFolderCount: report.mappedFolderCount,
+        visibleFileCount: report.visibleFileCount,
+        suggestedType: report.suggestedType,
+        suggestionReason: report.suggestionReason,
+        evidence: report.evidence.map((item) => ({ path: item.path, observation: item.observation, meaning: item.meaning })),
+        limitations: report.limitations.slice(),
+      };
+    }
+    let architectureMap;
+    if (project.architectureMap !== undefined) {
+      const map = project.architectureMap;
+      const relativePathIsSafe = (value) => {
+        if (typeof value !== 'string' || !value || value.length > 500) return false;
+        if (/^(?:[A-Za-z]:[\\/]|[\\/])/.test(value)) return false;
+        const parts = value.replace(/\\/g, '/').split('/');
+        return !parts.includes('..') && !parts.includes('');
+      };
+      const boundedCount = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+      const moduleKinds = ['module', 'route', 'api', 'schema', 'test', 'package'];
+      const relations = ['imports', 'calls-api', 'uses-schema'];
+      if (!map || typeof map !== 'object' || Array.isArray(map) || !Array.isArray(map.modules) || map.modules.length > 240 || !Array.isArray(map.connections) || map.connections.length > 1200) {
+        throw new Error('A project architecture map is invalid or exceeds its supported size.');
+      }
+      const moduleIds = new Set();
+      const modules = map.modules.map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.id !== 'string' || item.id.length > 100 || moduleIds.has(item.id) ||
+          typeof item.label !== 'string' || item.label.length < 1 || item.label.length > 200 ||
+          typeof item.path !== 'string' || item.path.length > 500 ||
+          !moduleKinds.includes(item.kind) || !['observed', 'inferred'].includes(item.evidenceLevel) ||
+          (item.kind === 'package' && item.fileCount === 0 ? !item.path.startsWith('package:') : !relativePathIsSafe(item.path)) ||
+          !boundedCount(item.fileCount, 100000) || !Array.isArray(item.filePaths) || item.filePaths.length > 120 ||
+          !item.filePaths.every(relativePathIsSafe) || !item.languageCounts || typeof item.languageCounts !== 'object' || Array.isArray(item.languageCounts) ||
+          Object.keys(item.languageCounts).length > 12 || !Object.entries(item.languageCounts).every(([language, count]) => language.length <= 40 && boundedCount(count, 100000)) ||
+          (item.roleHint !== undefined && (typeof item.roleHint !== 'string' || item.roleHint.length > 300))) {
+          throw new Error('A project architecture map contains an invalid module.');
+        }
+        moduleIds.add(item.id);
+        return {
+          id: item.id,
+          label: item.label,
+          path: item.path,
+          kind: item.kind,
+          evidenceLevel: item.evidenceLevel,
+          ...(typeof item.roleHint === 'string' ? { roleHint: item.roleHint } : {}),
+          fileCount: item.fileCount,
+          languageCounts: { ...item.languageCounts },
+          filePaths: item.filePaths.slice(),
+        };
+      });
+      const connections = map.connections.map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item) || typeof item.id !== 'string' || item.id.length > 120 ||
+          typeof item.source !== 'string' || !moduleIds.has(item.source) || typeof item.target !== 'string' || !moduleIds.has(item.target) ||
+          !relations.includes(item.relation) || !['observed', 'inferred'].includes(item.evidenceLevel) ||
+          !boundedCount(item.count, 1000000) || !Array.isArray(item.evidencePaths) || item.evidencePaths.length > 12 ||
+          !item.evidencePaths.every(relativePathIsSafe)) {
+          throw new Error('A project architecture map contains an invalid connection.');
+        }
+        return {
+          id: item.id,
+          source: item.source,
+          target: item.target,
+          relation: item.relation,
+          evidenceLevel: item.evidenceLevel,
+          count: item.count,
+          evidencePaths: item.evidencePaths.slice(),
+        };
+      });
+      const report = map.summary;
+      if (!report || typeof report !== 'object' || Array.isArray(report) || typeof report.scannedAt !== 'string' || report.scannedAt.length > 64 || Number.isNaN(Date.parse(report.scannedAt)) ||
+        !boundedCount(report.scannedFileCount, 100000) || !boundedCount(report.parsedFileCount, 100000) || !boundedCount(report.moduleCount, 240) ||
+        !boundedCount(report.connectionCount, 1200) || !Array.isArray(report.languages) || report.languages.length > 20 ||
+        !report.languages.every((language) => typeof language === 'string' && language.length <= 40) || !Array.isArray(report.frameworks) || report.frameworks.length > 40 ||
+        !report.frameworks.every((framework) => typeof framework === 'string' && framework.length <= 60) || !boundedCount(report.parserErrorCount, 100000) ||
+        typeof report.truncated !== 'boolean' || !Array.isArray(report.limitations) || report.limitations.length > 20 ||
+        !report.limitations.every((limitation) => typeof limitation === 'string' && limitation.length <= 500)) {
+        throw new Error('A project architecture map summary is invalid.');
+      }
+      architectureMap = {
+        modules,
+        connections,
+        summary: {
+          scannedAt: report.scannedAt,
+          scannedFileCount: report.scannedFileCount,
+          parsedFileCount: report.parsedFileCount,
+          moduleCount: report.moduleCount,
+          connectionCount: report.connectionCount,
+          languages: report.languages.slice(),
+          frameworks: report.frameworks.slice(),
+          parserErrorCount: report.parserErrorCount,
+          truncated: report.truncated,
+          limitations: report.limitations.slice(),
+        },
+      };
+      if (Buffer.byteLength(JSON.stringify(architectureMap), 'utf8') > 2 * 1024 * 1024) {
+        throw new Error('The project architecture map exceeds its supported storage size.');
+      }
+    }
+
     const nodes = Array.isArray(project.nodes) ? project.nodes : [];
     const edges = Array.isArray(project.edges) ? project.edges : [];
     if (nodes.length > 5000 || edges.length > 10000) throw new Error('A project exceeds the supported canvas size.');
@@ -696,6 +1039,10 @@ function normalizeSavedProjects(value) {
     } else if (project.folderPath !== undefined && project.folderPath !== null && project.folderPath !== '') {
       throw new Error('A project folder path must be an absolute path selected in Formative.');
     }
+    const { conversations: agentConversations, runs: agentRuns } = normalizeAgentHistory(
+      project.agentConversations,
+      project.agentRuns,
+    );
     return {
       ...project,
       name: project.name.trim(),
@@ -703,12 +1050,70 @@ function normalizeSavedProjects(value) {
       nodes,
       edges,
       issues: Array.isArray(project.issues) ? project.issues.slice(0, 10000) : [],
+      ...(scanSummary ? { scanSummary } : {}),
+      ...(architectureMap ? { architectureMap } : {}),
+      agentConversations,
+      agentRuns,
     };
   });
 
   const serialized = JSON.stringify(projects, null, 2);
   if (Buffer.byteLength(serialized, 'utf8') > MAX_PROJECTS_BYTES) throw new Error('Project data exceeds the 30 MB storage limit.');
   return { projects, serialized };
+}
+
+function recoverInterruptedAgentRuns() {
+  let file;
+  let tempFile;
+  try {
+    file = getProjectsFile();
+    if (!fs.existsSync(file)) return;
+    if (fs.statSync(file).size > MAX_PROJECTS_BYTES) return;
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!Array.isArray(parsed)) return;
+    for (const project of parsed) {
+      const savedPath = normalizedAbsolutePath(project?.folderPath);
+      if (savedPath) approvedDirectoryPaths.add(savedPath);
+    }
+    const { projects } = normalizeSavedProjects(parsed);
+    const now = new Date().toISOString();
+    let recoveredCount = 0;
+    for (const project of projects) {
+      project.agentRuns = project.agentRuns.map((run) => {
+        if (!['queued', 'starting', 'running', 'waiting_for_approval', 'stopping'].includes(run.status)) return run;
+        const eventSequence = run.events.reduce((maximum, item) => Math.max(maximum, item.sequence), 0) + 1;
+        const event = {
+          id: `event-${crypto.randomUUID()}`,
+          sequence: eventSequence,
+          type: 'cancelled',
+          occurredAt: now,
+          summary: 'Run was interrupted before Formative recorded a final result.',
+          details: 'Check the provider’s local session history before deciding whether to start it again.',
+        };
+        recoveredCount += 1;
+        return {
+          ...run,
+          status: 'cancelled',
+          updatedAt: now,
+          finishedAt: now,
+          events: [...run.events.slice(-79), event],
+        };
+      });
+    }
+    if (recoveredCount === 0) return;
+    const serialized = JSON.stringify(projects, null, 2);
+    if (Buffer.byteLength(serialized, 'utf8') > MAX_PROJECTS_BYTES) {
+      throw new Error('Interrupted run history could not be updated within the project storage limit.');
+    }
+    tempFile = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+    fs.writeFileSync(tempFile, serialized, { encoding: 'utf8', mode: 0o600 });
+    fs.renameSync(tempFile, file);
+  } catch (error) {
+    if (tempFile) {
+      try { fs.rmSync(tempFile, { force: true }); } catch {}
+    }
+    console.error('Unable to recover interrupted agent runs:', error instanceof Error ? error.message : 'Unknown storage error.');
+  }
 }
 
 // 6. Project storage stays inside the app's user-data directory.

@@ -135,7 +135,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
             }`}
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>{activeProjectId ? `Session transcripts (${sessions.length})` : 'Choose a project for transcripts'}</span>
+            <span>{activeProjectId ? `Saved transcripts (${sessions.length})` : 'Choose a project for transcripts'}</span>
           </button>
 
           <button
@@ -408,7 +408,7 @@ export const LaunchpadModal: React.FC<LaunchpadModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: BLUEPRINTS */}
+          {/* TAB 3: STARTER EXAMPLES */}
           {activeTab === 'templates' && (
             <div className="space-y-3">
               <div className="space-y-1">

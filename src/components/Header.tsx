@@ -171,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({
             title={hasActiveProject ? 'Inspect an existing agent transcript' : 'Choose a project first'}
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>Session Activity</span>
+            <span>Saved transcripts</span>
           </button>
         </div>
 
@@ -347,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Hub</span>
         </button>
 
-        {/* Save Blueprint Button */}
+        {/* Save Project Canvas Button */}
         {viewMode === 'architecture' && (
           <button
             onClick={onSave}

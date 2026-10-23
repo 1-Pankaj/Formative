@@ -27,17 +27,18 @@ const componentPalette: Array<{
   tag: string; 
   icon: React.ElementType;
   color: string;
+  lightColor: string;
 }> = [
-  { category: 'frontend', label: 'Frontend Client', tag: 'UI', icon: Globe, color: 'text-blue-400' },
-  { category: 'gateway', label: 'API Gateway', tag: 'GATEWAY', icon: Network, color: 'text-purple-400' },
-  { category: 'backend', label: 'Backend Service', tag: 'SERVICE', icon: Server, color: 'text-emerald-400' },
-  { category: 'database', label: 'Database Storage', tag: 'DATA', icon: Database, color: 'text-amber-400' },
-  { category: 'cache', label: 'Cache & Memory', tag: 'CACHE', icon: Zap, color: 'text-cyan-400' },
-  { category: 'queue', label: 'Message Queue / Event', tag: 'QUEUE', icon: ArrowLeftRight, color: 'text-pink-400' },
-  { category: 'worker', label: 'Background Worker', tag: 'WORKER', icon: Cpu, color: 'text-indigo-400' },
-  { category: 'ai-agent', label: 'AI Agent Coordinator', tag: 'AI', icon: Crown, color: 'text-amber-300' },
-  { category: 'auth', label: 'Auth & Policy', tag: 'AUTH', icon: Shield, color: 'text-red-400' },
-  { category: 'note', label: 'Architecture Memo', tag: 'DOC', icon: FileText, color: 'text-zinc-400' },
+  { category: 'frontend', label: 'Frontend Client', tag: 'UI', icon: Globe, color: 'text-blue-400', lightColor: 'text-blue-600' },
+  { category: 'gateway', label: 'API Gateway', tag: 'GATEWAY', icon: Network, color: 'text-purple-400', lightColor: 'text-purple-600' },
+  { category: 'backend', label: 'Backend Service', tag: 'SERVICE', icon: Server, color: 'text-emerald-400', lightColor: 'text-emerald-700' },
+  { category: 'database', label: 'Database Storage', tag: 'DATA', icon: Database, color: 'text-amber-400', lightColor: 'text-amber-700' },
+  { category: 'cache', label: 'Cache & Memory', tag: 'CACHE', icon: Zap, color: 'text-cyan-400', lightColor: 'text-cyan-700' },
+  { category: 'queue', label: 'Message Queue / Event', tag: 'QUEUE', icon: ArrowLeftRight, color: 'text-pink-400', lightColor: 'text-pink-600' },
+  { category: 'worker', label: 'Background Worker', tag: 'WORKER', icon: Cpu, color: 'text-indigo-400', lightColor: 'text-indigo-600' },
+  { category: 'ai-agent', label: 'AI Agent Coordinator', tag: 'AI', icon: Crown, color: 'text-amber-300', lightColor: 'text-amber-700' },
+  { category: 'auth', label: 'Auth & Policy', tag: 'AUTH', icon: Shield, color: 'text-red-400', lightColor: 'text-red-600' },
+  { category: 'note', label: 'Architecture Memo', tag: 'DOC', icon: FileText, color: 'text-zinc-400', lightColor: 'text-zinc-600' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ theme, onAddNode, nodeCount, edgeCount }) => {
@@ -68,20 +69,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ theme, onAddNode, nodeCount, e
               <button
                 key={t.category}
                 onClick={() => onAddNode(t.category)}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg border text-left transition-all ${
+                title={`Add ${t.label}`}
+                aria-label={`Add ${t.label} component to canvas`}
+                className={`w-full flex min-w-0 items-center justify-between gap-2 px-2.5 py-2 rounded-lg border text-left transition-all ${
                   isDark
                     ? 'border-transparent hover:border-[#27272a] hover:bg-[#18181c] text-zinc-300 hover:text-white'
                     : 'border-transparent hover:border-zinc-200 hover:bg-zinc-100 text-zinc-700 hover:text-black'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <Icon className={`w-3.5 h-3.5 ${t.color}`} />
-                  <span className="text-xs font-medium truncate">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isDark ? t.color : t.lightColor}`} aria-hidden="true" />
+                  <span className="min-w-0 flex-1 text-xs font-medium truncate">
                     {t.label}
                   </span>
                 </div>
 
-                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border ${
+                <span className={`shrink-0 whitespace-nowrap text-[10px] font-mono px-1.5 py-0.2 rounded border ${
                   isDark ? 'bg-[#121215] border-[#27272a] text-zinc-400' : 'bg-white border-zinc-200 text-zinc-600'
                 }`}>
                   {t.tag}
