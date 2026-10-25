@@ -61,7 +61,11 @@ function normalizedAbsolutePath(value) {
   if (typeof value !== 'string' || value.length === 0 || value.length > 4096 || !path.isAbsolute(value)) {
     return null;
   }
-  return path.normalize(path.resolve(value));
+  const resolved = path.normalize(path.resolve(value));
+  if (process.platform === 'win32' && resolved.length >= 2 && resolved[1] === ':') {
+    return resolved[0].toUpperCase() + resolved.slice(1);
+  }
+  return resolved;
 }
 
 function isApprovedDirectory(value) {

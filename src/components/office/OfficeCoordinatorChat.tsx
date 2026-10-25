@@ -114,6 +114,8 @@ export const OfficeCoordinatorChat: React.FC<OfficeCoordinatorChatProps> = ({
         providerId: selectedProviderId,
         conversationId: conversation,
         prompt: groundedPrompt,
+        displayPrompt: prompt.trim(),
+        title: prompt.trim(),
         employeeId: team.ceo.id,
         ...(selectedTaskId ? { taskId: selectedTaskId } : {}),
       });

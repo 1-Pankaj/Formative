@@ -122,7 +122,7 @@ function normalizeAgentHistory(conversationInput, runInput) {
         occurredAt: timestamp(event.occurredAt, 'An agent progress event date'),
         summary: requiredString(event.summary, 'An agent progress summary', 500),
       };
-      const details = optionalString(event.details, 'Agent progress details', 4000);
+      const details = optionalString(event.details, 'Agent progress details', 32000);
       const toolName = optionalString(event.toolName, 'An agent tool name', 200);
       if (details !== undefined) normalizedEvent.details = details;
       if (toolName !== undefined) normalizedEvent.toolName = toolName;

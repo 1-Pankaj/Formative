@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
+  Check,
   CheckCircle2,
   CircleAlert,
+  Copy,
   FolderOpen,
   LoaderCircle,
   Plus,
@@ -13,17 +15,29 @@ import {
 } from './ui/FormativeGlyphs';
 import codexMark from '../assets/providers/codex.svg';
 import claudeCodeMark from '../assets/providers/claude-code.svg';
-import type { Project, ThemeMode } from '../types';
+import type { OfficeMemberProfile, Project, ThemeMode } from '../types';
 import type { AgentProviderId, AgentProviderStatus, AgentRun, AgentRunEvent } from '../types/agentRuns';
 import { getProjectOfficeTeam } from './office/officeCast';
+import { MarkdownContent } from './chat/MarkdownContent';
+import { AgentExecutionTrace } from './chat/AgentExecutionTrace';
+import { cleanPromptForDisplay, getConversationCleanTitle } from '../utils/promptUtils';
 
 export interface StartChatRun {
   providerId: AgentProviderId;
   conversationId: string;
   prompt: string;
+  displayPrompt?: string;
+  title?: string;
   employeeId?: string;
   taskId?: string;
 }
+
+const STARTER_PROMPTS = [
+  'Explain the overall project architecture and key modules',
+  'Find potential bugs, missing error handlers, or edge cases',
+  'Summarize package dependencies and scripts in package.json',
+  'Suggest performance optimizations and cleanup areas',
+];
 
 interface AgentChatViewProps {
   theme: ThemeMode;
@@ -55,20 +69,18 @@ const PROVIDER_SETUP: Record<AgentProviderId, { title: string; subtitle: string 
 
 const RUNNING_STATUSES = new Set(['queued', 'starting', 'running', 'waiting_for_approval', 'stopping']);
 
-function ProviderMark({ providerId, dark, size = 'h-5 w-5' }: { providerId: AgentProviderId; dark: boolean; size?: string }) {
+function ProviderMark({ providerId, dark, size = 'h-6 w-6' }: { providerId: AgentProviderId; dark: boolean; size?: string }) {
   const source = providerId === 'codex-cli' ? codexMark : providerId === 'claude-code' ? claudeCodeMark : null;
   if (source) {
     const frameBorder = dark ? 'border-[#3a3a3d]' : 'border-zinc-700';
     return (
-      <span className={`${size} inline-flex shrink-0 items-center justify-center rounded-md border ${frameBorder} bg-[#09090b] p-0.5`} aria-hidden="true">
+      <span className={`${size} inline-flex shrink-0 items-center justify-center rounded-lg border ${frameBorder} bg-[#09090b] p-1 shadow-xs`} aria-hidden="true">
         <img src={source} className="h-full w-full object-contain" alt="" />
       </span>
     );
   }
 
-  // Antigravity's first-party SVG is not bundled with the local project assets.
-  // Keep its identity typographic until an approved local asset is available.
-  return <span className={`${size} inline-grid place-items-center text-sm font-semibold leading-none tracking-[-0.08em] ${dark ? 'text-zinc-200' : 'text-zinc-700'}`} aria-hidden="true">A</span>;
+  return <span className={`${size} inline-grid place-items-center rounded-lg border border-zinc-700 bg-[#09090b] text-sm font-bold leading-none tracking-[-0.08em] ${dark ? 'text-zinc-200' : 'text-zinc-700'}`} aria-hidden="true">A</span>;
 }
 
 function providerStatusLabel(providerId: AgentProviderId, status: AgentProviderStatus | undefined, isDesktopApp: boolean, isChecking: boolean) {
@@ -221,6 +233,11 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }, [activeConversation, project.agentRuns]);
   const currentRun = [...conversationRuns].reverse().find((run) => RUNNING_STATUSES.has(run.status)) || null;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversationRuns.length, currentRun?.events.length]);
 
   const startNewConversation = () => {
     setConversationId(null);
@@ -298,11 +315,11 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                     ? dark ? 'bg-[#252529] text-white' : 'bg-zinc-200/80 text-zinc-950'
                     : dark ? 'text-zinc-300 hover:bg-[#18181b]' : 'text-zinc-700 hover:bg-zinc-100'}`}
                 >
-                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center ${selected ? dark ? 'opacity-100' : 'opacity-90' : 'opacity-70'}`}>
-                    <ProviderMark providerId={conversation.providerId} dark={dark} size="h-4 w-4" />
+                  <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center ${selected ? dark ? 'opacity-100' : 'opacity-90' : 'opacity-70'}`}>
+                    <ProviderMark providerId={conversation.providerId} dark={dark} size="h-5 w-5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">{conversation.title}</span>
+                    <span className="block truncate text-sm font-semibold">{getConversationCleanTitle(conversation.title)}</span>
                     <span className={`mt-0.5 block truncate text-[13px] ${quiet}`}>{title}</span>
                   </span>
                 </button>
@@ -311,7 +328,7 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
           </div>
           <div className={`border-t px-3.5 py-2.5 text-[13px] leading-relaxed ${dark ? 'border-[#27272a]' : 'border-zinc-200'} ${quiet}`}>
             <div className="flex items-start gap-2">
-              <FolderOpen className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <FolderOpen className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="min-w-0 truncate" title={project.folderPath || 'No local project folder'}>{project.folderPath || 'No local folder selected'}</span>
             </div>
           </div>
@@ -322,11 +339,11 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
             <>
               <div className={`flex min-h-[64px] items-center justify-between gap-3 border-b px-5 py-3 ${dark ? 'border-[#27272a]' : 'border-zinc-200'}`}>
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg border ${dark ? 'border-[#303036] bg-[#18181b]' : 'border-zinc-200 bg-zinc-50'}`}>
-                      <ProviderMark providerId={activeConversation.providerId} dark={dark} />
+                  <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${dark ? 'border-[#303036] bg-[#18181b]' : 'border-zinc-200 bg-zinc-50'}`}>
+                      <ProviderMark providerId={activeConversation.providerId} dark={dark} size="h-7 w-7" />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="truncate text-base font-semibold">{activeConversation.title}</h1>
+                    <h1 className="truncate text-base font-semibold">{getConversationCleanTitle(activeConversation.title)}</h1>
                       <p className={`mt-0.5 text-[13px] ${subtle}`}>{PROVIDER_SETUP[activeConversation.providerId]?.title || 'Agent'} · {project.name}</p>
                   </div>
                 </div>
@@ -339,8 +356,12 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                     <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" /> Stop run
                   </button>
                 ) : (
-                  <span className={`hidden shrink-0 items-center gap-1.5 text-xs font-medium sm:flex ${subtle}`}>
-                    <span className={`h-2 w-2 rounded-full ${conversationReadinessLabel === 'Ready' ? 'bg-emerald-500' : dark ? 'bg-zinc-500' : 'bg-zinc-400'}`} aria-hidden="true" /> {conversationReadinessLabel}
+                  <span className={`hidden shrink-0 items-center px-2.5 py-1 rounded-md text-xs font-mono border sm:flex ${
+                    conversationReadinessLabel === 'Ready'
+                      ? dark ? 'border-zinc-700 bg-zinc-800/80 text-zinc-300' : 'border-zinc-300 bg-zinc-100 text-zinc-700'
+                      : dark ? 'border-zinc-800 text-zinc-500' : 'border-zinc-200 text-zinc-400'
+                  }`}>
+                    {conversationReadinessLabel}
                   </span>
                 )}
               </div>
@@ -356,17 +377,36 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
 
               <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5" role="log" aria-label="Conversation messages and agent progress">
                 {conversationRuns.length === 0 ? (
-                  <div className="mx-auto flex h-full max-w-md flex-col items-center justify-center text-center">
+                  <div className="mx-auto flex h-full max-w-lg flex-col items-center justify-center text-center">
                     <div className={`mb-3.5 grid h-14 w-14 place-items-center rounded-2xl border ${dark ? 'border-[#303036] bg-[#151518]' : 'border-zinc-200 bg-white'}`}>
                       <ProviderMark providerId={activeConversation.providerId} dark={dark} size="h-7 w-7" />
                     </div>
                     <h2 className="text-base font-semibold">Start with a project question</h2>
-                    <p className={`mt-2 text-[15px] leading-relaxed ${subtle}`}>Ask this agent to explain code or help you understand how the selected project works. Your first run is read-only.</p>
+                    <p className={`mt-2 text-[14px] leading-relaxed ${subtle}`}>Ask this agent to explain code, review architecture, or verify functions. All runs are sandboxed and read-only.</p>
+
+                    <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-lg">
+                      {STARTER_PROMPTS.map((starter) => (
+                        <button
+                          key={starter}
+                          type="button"
+                          onClick={() => setPrompt(starter)}
+                          className={`text-xs px-3.5 py-2 rounded-xl border transition-all text-left flex items-center gap-2 ${
+                            dark
+                              ? 'border-[#333339] bg-[#161619] hover:bg-[#202025] hover:border-zinc-500 text-zinc-300'
+                              : 'border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-zinc-700 shadow-xs'
+                          }`}
+                        >
+                          <span className="text-brand">✦</span>
+                          <span>{starter}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="mx-auto flex w-full max-w-4xl xl:max-w-5xl flex-col gap-6">
                     {conversationRuns.map((run) => {
                       const linkedTask = (project.issues || []).find((issue) => issue.id === run.taskId);
+                      const assignedEmployee = assignableEmployees.find((e) => e.id === run.employeeId || e.id === activeConversation.employeeId);
                       return (
                         <RunHistory
                           key={run.id}
@@ -374,9 +414,11 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                           dark={dark}
                           providerId={activeConversation.providerId}
                           taskLabel={linkedTask ? `${linkedTask.key} · ${linkedTask.title}` : undefined}
+                          employee={assignedEmployee}
                         />
                       );
                     })}
+                    <div ref={messagesEndRef} />
                   </div>
                 )}
               </div>
@@ -390,12 +432,12 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     onKeyDown={(event) => {
-                      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                      if (event.key === 'Enter' && !event.shiftKey) {
                         event.preventDefault();
                         event.currentTarget.form?.requestSubmit();
                       }
                     }}
-                    placeholder={project.folderPath ? 'Ask about this project…' : 'Choose a local project folder to start'}
+                    placeholder={project.folderPath ? 'Ask about this project (Enter to send, Shift+Enter for newline)…' : 'Choose a local project folder to start'}
                     aria-label="Message the agent"
                     maxLength={20000}
                     rows={2}
@@ -418,17 +460,29 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                         </select>
                       </label>
                     </div>
-                    <button
-                      type="submit"
-                      disabled={!prompt.trim() || !canStartRun || Boolean(currentRun) || submitting}
-                      className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-blue-600 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-45 shadow-xs"
-                    >
-                      {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
-                      {submitting ? 'Starting…' : 'Send'}
-                    </button>
+
+                    {currentRun ? (
+                      <button
+                        type="button"
+                        onClick={() => { void onStopRun(currentRun.id); }}
+                        className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-rose-600 px-4 text-[13px] font-semibold text-white hover:bg-rose-500 transition-colors shadow-xs"
+                      >
+                        <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                        Stop run
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={!prompt.trim() || !canStartRun || submitting}
+                        className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover active:bg-brand-active disabled:cursor-not-allowed disabled:opacity-45 shadow-xs"
+                      >
+                        {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+                        {submitting ? 'Starting…' : 'Send'}
+                      </button>
+                    )}
                   </div>
                 </div>
-                <p className={`mx-auto mt-2 max-w-4xl xl:max-w-5xl text-right text-xs ${quiet}`}>Ctrl/⌘ + Enter to send · read-only run</p>
+                <p className={`mx-auto mt-2 max-w-4xl xl:max-w-5xl text-right text-xs ${quiet}`}>Enter to send · Shift+Enter for new line · read-only run</p>
               </form>
             </>
           ) : (
@@ -524,12 +578,29 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                 <form onSubmit={handleSubmit} className={`mt-6 overflow-hidden rounded-xl border ${dark ? 'border-[#37373d] bg-[#111114]' : 'border-zinc-300 bg-white'}`}>
                   <div className="px-4 pt-4">
                     <label htmlFor="agent-first-prompt" className="text-[14px] font-semibold">What would you like to understand?</label>
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      {STARTER_PROMPTS.map((starter) => (
+                        <button
+                          key={starter}
+                          type="button"
+                          onClick={() => setPrompt(starter)}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition-all text-left flex items-center gap-1.5 ${
+                            dark
+                              ? 'border-[#333339] bg-[#18181c] hover:bg-[#222227] hover:border-zinc-500 text-zinc-300'
+                              : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 text-zinc-700 shadow-xs'
+                          }`}
+                        >
+                          <span className="text-brand">✦</span>
+                          <span>{starter}</span>
+                        </button>
+                      ))}
+                    </div>
                     <textarea
                       id="agent-first-prompt"
                       value={prompt}
                       onChange={(event) => setPrompt(event.target.value)}
                       onKeyDown={(event) => {
-                        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                        if (event.key === 'Enter' && !event.shiftKey) {
                           event.preventDefault();
                           event.currentTarget.form?.requestSubmit();
                         }
@@ -538,7 +609,7 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                       maxLength={20000}
                       rows={3}
                       disabled={!project.folderPath || !canStartRun || submitting}
-                      className={`mt-2 block min-h-24 w-full resize-y rounded-lg border px-3.5 py-3 text-[15px] leading-relaxed outline-none focus:border-zinc-500 disabled:cursor-not-allowed ${dark ? 'border-[#37373d] bg-[#17171a] text-zinc-100 placeholder:text-zinc-500' : 'border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-500'}`}
+                      className={`mt-2.5 block min-h-24 w-full resize-y rounded-lg border px-3.5 py-3 text-[14px] leading-relaxed outline-none focus:border-zinc-500 disabled:cursor-not-allowed ${dark ? 'border-[#37373d] bg-[#17171a] text-zinc-100 placeholder:text-zinc-500' : 'border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-500'}`}
                     />
                   </div>
                   {localError && <p role="alert" className="mx-4 mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[13px] text-rose-700 dark:text-rose-300">{localError}</p>}
@@ -561,7 +632,7 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
                     <button
                       type="submit"
                       disabled={!prompt.trim() || !canStartRun || !project.folderPath || submitting}
-                      className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-4 text-[14px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${dark ? 'bg-zinc-100 text-zinc-900 hover:bg-white' : 'bg-zinc-900 text-white hover:bg-zinc-700'}`}
+                      className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg bg-brand px-4 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover active:bg-brand-active disabled:cursor-not-allowed disabled:opacity-45 shadow-xs"
                     >
                       {submitting ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
                       {submitting ? 'Starting…' : 'Start conversation'}
@@ -590,58 +661,140 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
   );
 };
 
-function RunHistory({ run, dark, providerId, taskLabel }: { run: AgentRun; dark: boolean; providerId: AgentProviderId; taskLabel?: string }) {
+function RunHistory({
+  run,
+  dark,
+  providerId,
+  taskLabel,
+  employee,
+}: {
+  run: AgentRun;
+  dark: boolean;
+  providerId: AgentProviderId;
+  taskLabel?: string;
+  employee?: OfficeMemberProfile;
+}) {
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedResponse, setCopiedResponse] = useState(false);
+
   const assistantEvents = run.events.filter((event) => event.type === 'assistant_message');
   const statusEvents = run.events.filter((event) => event.type !== 'assistant_message' && event.type !== 'prompt');
+  const isRunning = RUNNING_STATUSES.has(run.status);
+
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(run.prompt);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch {}
+  };
+
+  const handleCopyResponse = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedResponse(true);
+      setTimeout(() => setCopiedResponse(false), 2000);
+    } catch {}
+  };
+
   return (
-    <article className="flex flex-col gap-3.5">
-      <div className="flex justify-end">
-        <div className={`max-w-[85%] rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed shadow-xs ${dark ? 'bg-[#25252a] text-zinc-100' : 'bg-blue-50/90 text-zinc-900 border border-blue-100'}`}>
-          {taskLabel && <p className={`mb-1.5 truncate text-xs font-semibold ${dark ? 'text-blue-300' : 'text-blue-700'}`}>Linked task · {taskLabel}</p>}
-          <p className="whitespace-pre-wrap break-words">{run.prompt}</p>
-          <p className={`mt-2 text-right text-xs font-mono opacity-70 ${dark ? 'text-zinc-400' : 'text-zinc-500'}`}>{formatTime(run.createdAt)}</p>
+    <article className="flex flex-col gap-4">
+      {/* User Message */}
+      <div className="flex justify-end group">
+        <div className={`relative max-w-[85%] rounded-2xl rounded-br-sm px-4 py-3 text-sm leading-relaxed shadow-xs ${
+          dark ? 'bg-[#222227] text-zinc-100 border border-[#2e2e36]' : 'bg-brand/10 text-zinc-900 border border-brand/20'
+        }`}>
+          {taskLabel && (
+            <p className="mb-1.5 truncate text-xs font-semibold text-brand">
+              Linked task · {taskLabel}
+            </p>
+          )}
+          <p className="whitespace-pre-wrap break-words">{run.displayPrompt || cleanPromptForDisplay(run.prompt)}</p>
+          <div className="mt-2 flex items-center justify-between gap-2 text-xs font-mono opacity-70">
+            <button
+              type="button"
+              onClick={handleCopyPrompt}
+              className={`opacity-0 group-hover:opacity-100 transition-opacity hover:underline flex items-center gap-1.5 ${
+                copiedPrompt ? 'text-emerald-400' : 'text-zinc-400'
+              }`}
+            >
+              {copiedPrompt ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedPrompt ? 'Copied' : 'Copy'}</span>
+            </button>
+            <span className={dark ? 'text-zinc-400' : 'text-zinc-500'}>{formatTime(run.createdAt)}</span>
+          </div>
         </div>
       </div>
 
-      {statusEvents.length > 0 && (
-        <ol className="ml-3 flex flex-col gap-2 border-l border-dashed border-zinc-300 py-1 pl-3.5 dark:border-zinc-700" aria-label="Agent progress">
-          {statusEvents.map((event) => {
-            const label = eventLabel(event);
-            if (!label) return null;
-            return (
-              <li key={event.id} className={`flex items-start gap-2 text-[13px] leading-5 ${event.type === 'warning' || event.type === 'error' ? dark ? 'text-amber-300' : 'text-amber-800' : dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-                {event.type === 'completed' ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : event.type === 'error' ? <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" aria-hidden="true" /> : <Activity className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${dark ? 'text-zinc-400' : 'text-zinc-500'}`} aria-hidden="true" />}
-                <span>{label}</span>
-                <span className={`ml-auto shrink-0 font-mono text-xs ${dark ? 'text-zinc-500' : 'text-zinc-600'}`}>{formatTime(event.occurredAt)}</span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
+      {/* Structured Tool & Progress Execution Trace */}
+      <AgentExecutionTrace
+        events={statusEvents}
+        status={run.status}
+        dark={dark}
+        formatTime={formatTime}
+      />
 
-      {assistantEvents.map((event) => (
-        <div key={event.id} className="flex justify-start">
-          <div className={`max-w-[90%] rounded-2xl rounded-bl-sm border px-4 py-3.5 text-[15px] leading-relaxed ${dark ? 'border-[#303036] bg-[#151518] text-zinc-100' : 'border-zinc-200 bg-white text-zinc-900'}`}>
-            <div className={`mb-2 flex items-center gap-2 text-[13px] font-semibold ${dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-              <ProviderMark providerId={providerId} dark={dark} size="h-4 w-4" />
-              <span>{PROVIDER_SETUP[providerId]?.title || 'Agent'}</span>
+      {/* Assistant Messages */}
+      {assistantEvents.map((event) => {
+        const fullContent = event.details || event.summary;
+        return (
+          <div key={event.id} className="flex justify-start group">
+            <div className={`w-full max-w-[94%] xl:max-w-[92%] rounded-2xl rounded-bl-sm border px-5 py-4 text-[14px] leading-relaxed shadow-xs ${
+              dark ? 'border-[#2d2d34] bg-[#141418] text-zinc-100' : 'border-zinc-200 bg-white text-zinc-900'
+            }`}>
+              <div className="mb-3 flex items-center justify-between border-b pb-2.5 gap-2" style={{ borderColor: dark ? '#222228' : '#f0f0f3' }}>
+                <div className="flex items-center gap-2.5">
+                  <ProviderMark providerId={providerId} dark={dark} size="h-7 w-7" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[14px] font-semibold ${dark ? 'text-zinc-100' : 'text-zinc-900'}`}>
+                        {employee ? employee.name : (PROVIDER_SETUP[providerId]?.title || 'Agent')}
+                      </span>
+                      {employee && (
+                        <span className={`text-[11px] font-mono px-2 py-0.5 rounded ${
+                          dark ? 'bg-zinc-800 text-zinc-400 border border-zinc-700/60' : 'bg-zinc-100 text-zinc-600 border border-zinc-200'
+                        }`}>
+                          {employee.roleTitle}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyResponse(fullContent)}
+                  className={`opacity-0 group-hover:opacity-100 transition-opacity text-xs font-mono flex items-center gap-1.5 ${
+                    copiedResponse ? 'text-emerald-400' : dark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
+                  title="Copy response"
+                >
+                  {copiedResponse ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedResponse ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              <MarkdownContent
+                content={fullContent}
+                dark={dark}
+                isStreaming={isRunning}
+              />
             </div>
-            <p className="whitespace-pre-wrap break-words">{event.details || event.summary}</p>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
-      {!assistantEvents.length && RUNNING_STATUSES.has(run.status) && (
-        <div role="status" className={`flex items-center gap-2 pl-2 text-[13px] ${dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-          <LoaderCircle className={`h-4 w-4 animate-spin ${dark ? 'text-zinc-300' : 'text-zinc-600'}`} aria-hidden="true" />
-          <span>Agent is working…</span>
+      {!assistantEvents.length && isRunning && (
+        <div role="status" className={`flex items-center gap-2.5 pl-2 text-[13px] ${dark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+          <span className="w-2 h-2 rounded-full bg-brand animate-ping" />
+          <span className="font-medium">Agent is inspecting project files…</span>
         </div>
       )}
 
-      <div className={`flex items-center gap-2 pl-2 text-[13px] ${dark ? 'text-zinc-400' : 'text-zinc-700'}`}>
+      {/* Status Footer */}
+      <div className={`flex items-center gap-2 pl-2 text-[12px] font-mono ${dark ? 'text-zinc-500' : 'text-zinc-600'}`}>
         <StatusMark status={run.status} dark={dark} />
-        <span className="font-medium capitalize">{run.status.replaceAll('_', ' ')}</span>
-        {run.finishedAt && <span className={`font-mono text-xs ${dark ? 'text-zinc-500' : 'text-zinc-600'}`}>· {formatTime(run.finishedAt)}</span>}
+        <span className="capitalize">{run.status.replaceAll('_', ' ')}</span>
+        {run.finishedAt && <span>· {formatTime(run.finishedAt)}</span>}
       </div>
     </article>
   );

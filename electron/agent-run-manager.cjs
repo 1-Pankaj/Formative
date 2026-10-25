@@ -7,7 +7,7 @@ const { spawn, execFile } = require('child_process');
 const MAX_ACTIVE_RUNS = 3;
 const MAX_STREAM_LINE_BYTES = 2 * 1024 * 1024;
 const MAX_EVENTS_PER_RUN = 80;
-const MAX_TEXT_PER_EVENT = 4000;
+const MAX_TEXT_PER_EVENT = 32000;
 const PROVIDERS = {
   'codex-cli': { displayName: 'Codex', executable: 'codex', canRun: true },
   'claude-code': { displayName: 'Claude Code', executable: 'claude', canRun: true },
@@ -228,7 +228,12 @@ function createAgentRunManager({ emitEvent }) {
     }
     if (eventType === 'item.started' || eventType === 'item/started') {
       if (item.type === 'commandExecution' || item.type === 'command_execution') {
-        pushEvent(run, 'tool_started', 'Checking project information.', { toolName: 'Command' });
+        const cmd = item.command || item.params?.command;
+        const summary = cmd ? `Running ${clampText(cmd, 60)}` : 'Checking project information.';
+        pushEvent(run, 'tool_started', summary, {
+          toolName: 'Command',
+          details: cmd || undefined,
+        });
       } else if (item.type === 'fileChange' || item.type === 'file_change') {
         pushEvent(run, 'warning', 'This read-only run cannot change project files.');
       } else if (item.type === 'mcpToolCall' || item.type === 'mcp_tool_call') {
@@ -283,8 +288,19 @@ function createAgentRunManager({ emitEvent }) {
       for (const block of message.message.content) {
         if (block?.type === 'tool_use' && typeof block.name === 'string') {
           const safeName = ['Read', 'Glob', 'Grep'].includes(block.name) ? block.name : 'Project tool';
-          const label = safeName === 'Read' ? 'Reading project information.' : safeName === 'Grep' || safeName === 'Glob' ? 'Searching project files.' : 'Using a project tool.';
-          pushEvent(run, 'tool_started', label, { toolName: safeName });
+          const targetPath = typeof block.input?.file_path === 'string' ? block.input.file_path : undefined;
+          const query = typeof block.input?.pattern === 'string' ? block.input.pattern : undefined;
+          let label = 'Using a project tool.';
+          if (safeName === 'Read') {
+            label = targetPath ? `Reading ${path.basename(targetPath)}` : 'Reading project information.';
+          } else if (safeName === 'Grep' || safeName === 'Glob') {
+            label = query ? `Searching for "${query}"` : 'Searching project files.';
+          }
+          pushEvent(run, 'tool_started', label, {
+            toolName: safeName,
+            paths: targetPath ? [targetPath] : undefined,
+            details: query || targetPath || undefined,
+          });
         }
       }
       return;
@@ -502,4 +518,10 @@ function createAgentRunManager({ emitEvent }) {
   return { getStatuses, startRun, stopRun, stopAll };
 }
 
-module.exports = { createAgentRunManager };
+module.exports = {
+  createAgentRunManager,
+  findExecutable,
+  isWindowsBatch,
+  clampText,
+  relativeProjectPaths,
+};

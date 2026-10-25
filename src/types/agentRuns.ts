@@ -89,6 +89,7 @@ export interface AgentRun {
   taskId?: string;
   employeeId?: string;
   prompt: string;
+  displayPrompt?: string;
   permissionMode: AgentPermissionMode;
   status: AgentRunStatus;
   createdAt: string;
@@ -107,6 +108,7 @@ export interface StartAgentRunRequest {
   taskId?: string;
   employeeId?: string;
   prompt: string;
+  displayPrompt?: string;
   permissionMode: AgentPermissionMode;
 }
 

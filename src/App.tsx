@@ -34,6 +34,7 @@ import { AgentStepNode } from './components/nodes/AgentStepNode';
 import { NoteNode } from './components/nodes/NoteNode';
 import { hierarchicalTreeLayout } from './utils/treeLayout';
 import { normalizeArchitectureNodeTypes } from './utils/canvasNodeCompatibility';
+import { cleanPromptForDisplay, getConversationCleanTitle } from './utils/promptUtils';
 import { SAMPLE_TEMPLATES } from './data/defaultProjects';
 import { 
   Project, 
@@ -408,11 +409,12 @@ export const App: React.FC = () => {
     }
     const isExistingConversation = Boolean(conversation);
     if (!conversation) {
-      const title = request.prompt.trim().replace(/\s+/g, ' ');
+      const userCleanPrompt = request.displayPrompt || cleanPromptForDisplay(request.prompt);
+      const title = getConversationCleanTitle(request.title || userCleanPrompt);
       conversation = {
         id: request.conversationId,
         providerId: request.providerId,
-        title: title.length > 72 ? `${title.slice(0, 71)}…` : title,
+        title,
         employeeId: assignedEmployeeId,
         ...(request.taskId ? { taskId: request.taskId } : {}),
         createdAt: now,
@@ -428,6 +430,7 @@ export const App: React.FC = () => {
       employeeId: assignedEmployeeId,
       ...(request.taskId ? { taskId: request.taskId } : {}),
       prompt: request.prompt.trim(),
+      displayPrompt: request.displayPrompt || cleanPromptForDisplay(request.prompt),
       permissionMode: 'read-only',
       status: 'starting',
       createdAt: now,
@@ -477,6 +480,7 @@ export const App: React.FC = () => {
       ...(conversation.providerSessionId ? { providerSessionId: conversation.providerSessionId } : {}),
       ...(request.taskId ? { taskId: request.taskId } : {}),
       prompt: request.prompt.trim(),
+      displayPrompt: request.displayPrompt || cleanPromptForDisplay(request.prompt),
       permissionMode: 'read-only',
     };
     try {
@@ -1751,7 +1755,7 @@ export const App: React.FC = () => {
 
           <div className="flex items-center gap-2.5 shrink-0">
             <span title={projectSaveError || undefined} className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${projectSaveState === 'error' ? 'bg-red-400' : projectSaveState === 'saving' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+              {projectSaveState === 'error' && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
               <span>{!isProjectStoreReady ? 'Loading projects' : projectSaveState === 'error' ? 'Save issue' : projectSaveState === 'saving' ? 'Saving' : window.formativeApi ? 'Saved' : 'Preview storage'}</span>
             </span>
             {activeSession && (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Project, ViewMode, ThemeMode } from '../types';
 import formativeLogo from '../assets/FormativeLogo.png';
+import { Check, ChevronDown, Plus } from './ui/FormativeGlyphs';
 
 interface AppNavigationProps {
   theme: ThemeMode;
@@ -165,7 +166,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
       </div>
 
       {/* 2. PRIMARY SIDEBAR */}
-      <div className="w-[172px] xl:w-[200px] 2xl:w-[220px] h-full flex flex-col justify-between overflow-hidden">
+      <div className="w-[220px] xl:w-[240px] 2xl:w-[260px] h-full flex flex-col justify-between overflow-hidden">
         {/* Top: Project Dropdown Header */}
         <div className="p-3 border-b flex-shrink-0 relative">
           <button
@@ -173,19 +174,29 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
             aria-expanded={isProjectDropdownOpen}
             aria-haspopup="true"
             aria-label={activeProject ? `Current project: ${activeProject.name}. Choose another project` : 'Choose a project'}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-left transition-colors ${
+            className={`w-full flex items-center justify-between px-3 py-2 h-10 rounded-lg border text-left transition-colors ${
               isDark 
                 ? 'bg-[#121215] border-[#27272a] hover:border-zinc-700 text-zinc-100' 
                 : 'bg-white border-zinc-200 hover:border-zinc-300 text-zinc-900'
             }`}
           >
             <div className="flex items-center gap-2 truncate">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${activeProject ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
-              <span className="text-xs font-semibold truncate">
+              <span className={`w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shrink-0 border transition-colors ${
+                activeProject
+                  ? isDark
+                    ? 'bg-brand/15 border-brand/35 text-brand'
+                    : 'bg-brand/10 border-brand/25 text-brand'
+                  : isDark
+                  ? 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                  : 'bg-zinc-100 border-zinc-200 text-zinc-500'
+              }`}>
+                {activeProject ? (activeProject.name.charAt(0).toUpperCase() || 'P') : '—'}
+              </span>
+              <span className="text-sm font-semibold truncate">
                 {activeProject ? activeProject.name : 'Select project'}
               </span>
             </div>
-            <span aria-hidden="true" className="ml-1 shrink-0 text-xs text-zinc-400">⌄</span>
+            <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${isProjectDropdownOpen ? 'rotate-180 text-brand' : 'text-zinc-400'}`} />
           </button>
 
           {/* Project Switcher Dropdown */}
@@ -195,42 +206,75 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 className="fixed inset-0 z-40" 
                 onClick={() => setIsProjectDropdownOpen(false)} 
               />
-              <div className={`absolute top-12 left-3 right-3 z-50 rounded-xl border shadow-xl p-1.5 text-xs ${
-                isDark ? 'bg-[#18181c] border-[#27272a] text-zinc-200' : 'bg-white border-zinc-200 text-zinc-800'
+              <div className={`absolute top-[52px] left-3 right-3 z-50 rounded-xl border shadow-2xl p-2 select-none backdrop-blur-md transition-all ${
+                isDark 
+                  ? 'bg-[#18181c]/95 border-[#2e2e36] text-zinc-200' 
+                  : 'bg-white/95 border-zinc-200 text-zinc-800'
               }`}>
-                <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-semibold">
-                  Projects
+                <div className="flex items-center justify-between px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-400 border-b mb-1.5 border-inherit/30">
+                  <span>Projects</span>
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-xs font-medium">{projects.length}</span>
                 </div>
-                {projects.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      onSelectProject(p.id);
-                      setIsProjectDropdownOpen(false);
-                    }}
-                    aria-pressed={activeProject?.id === p.id}
-                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left transition-colors ${
-                      activeProject?.id === p.id
-                        ? isDark ? 'bg-zinc-800 text-white font-medium' : 'bg-zinc-100 text-black font-medium'
-                        : isDark ? 'hover:bg-zinc-800/60' : 'hover:bg-zinc-50'
-                    }`}
-                  >
-                    <span className="truncate">{p.name}</span>
-                    {activeProject?.id === p.id && <span className="ml-2 text-xs" aria-hidden="true">✓</span>}
-                  </button>
-                ))}
+                <div className="max-h-[220px] overflow-y-auto space-y-0.5 pr-0.5">
+                  {projects.map((p) => {
+                    const isSelected = activeProject?.id === p.id;
+                    const initial = p.name.charAt(0).toUpperCase() || 'P';
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          onSelectProject(p.id);
+                          setIsProjectDropdownOpen(false);
+                        }}
+                        aria-pressed={isSelected}
+                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors ${
+                          isSelected
+                            ? isDark 
+                              ? 'bg-zinc-800/90 text-white font-medium shadow-xs' 
+                              : 'bg-zinc-100 text-black font-medium shadow-xs'
+                            : isDark 
+                              ? 'hover:bg-zinc-800/50 text-zinc-300' 
+                              : 'hover:bg-zinc-50 text-zinc-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-6 h-6 rounded-md text-xs font-bold flex items-center justify-center shrink-0 border ${
+                            isSelected
+                              ? 'bg-brand/20 border-brand/40 text-brand'
+                              : isDark
+                              ? 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                              : 'bg-zinc-100 border-zinc-200 text-zinc-600'
+                          }`}>
+                            {initial}
+                          </span>
+                          <div className="min-w-0">
+                            <span className="block truncate font-medium text-sm leading-tight">{p.name}</span>
+                            {p.type && (
+                              <span className="block truncate text-xs text-zinc-400 font-normal leading-tight mt-0.5">
+                                {p.type} {p.issues?.length ? `· ${p.issues.length} tasks` : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-brand shrink-0 ml-1.5" />}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className={`my-1 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-100'}`} />
                 <button
                   onClick={() => {
                     setIsProjectDropdownOpen(false);
                     onOpenNewProject();
                   }}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${
-                    isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-800/60' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors font-medium text-sm ${
+                    isDark 
+                      ? 'text-zinc-400 hover:text-white hover:bg-zinc-800/70 hover:text-brand' 
+                      : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
                   }`}
                 >
-                  <span aria-hidden="true" className="text-base leading-none">+</span>
-                  <span>New Project...</span>
+                  <Plus className="w-4 h-4 text-brand" />
+                  <span>New Project…</span>
                 </button>
               </div>
             </>
@@ -250,7 +294,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Open this project overview'}
                 aria-current={viewMode === 'project-home' ? 'page' : undefined}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'project-home'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-700 hover:text-black hover:bg-zinc-100'
@@ -263,14 +307,14 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Open project tasks'}
                 aria-current={viewMode === 'issues' ? 'page' : undefined}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'issues'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
                 }`}
               >
                 <span>Tasks &amp; Issues</span>
-                <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                   isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'
                 }`}>
                   {activeProject?.issues?.length ?? 0}
@@ -282,7 +326,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Start or continue a project agent conversation'}
                 aria-current={viewMode === 'agent-chat' ? 'page' : undefined}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'agent-chat'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-700 hover:text-black hover:bg-zinc-100'
@@ -296,7 +340,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Browse saved transcripts for this project'}
                 aria-current={viewMode === 'agent-flow' ? 'page' : undefined}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'agent-flow'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
@@ -321,7 +365,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
               aria-current={viewMode === 'operations-floor' ? 'page' : undefined}
                 title={!activeProject ? 'Choose a project first' : 'Open the project office'}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'operations-floor'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
@@ -333,13 +377,13 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
               <button
                 onClick={onOpenTeamSetup}
                 disabled={!activeProject}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]/50' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
                 }`}
                 title={!activeProject ? 'Choose a project first' : 'Open the project office team setup'}
               >
                 <span>Team setup</span>
-                <span className="text-[10px] text-zinc-500 font-mono">{enabledEmployeeCount}</span>
+                <span className="text-xs text-zinc-400 font-medium">{enabledEmployeeCount}</span>
               </button>
             </div>
           </div>
@@ -355,7 +399,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Open the project canvas'}
                 aria-current={viewMode === 'architecture' ? 'page' : undefined}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'architecture'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
@@ -374,7 +418,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
             <div className="space-y-0.5">
               <button
                 onClick={onOpenGuide}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isDark ? 'text-zinc-400 hover:text-white hover:bg-[#18181b]' : 'text-zinc-600 hover:text-black hover:bg-zinc-100'
                 }`}
               >

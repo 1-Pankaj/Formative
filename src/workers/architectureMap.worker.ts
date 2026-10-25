@@ -9,7 +9,7 @@ import type {
   ArchitectureSourceSummary,
 } from '../types/architectureMap';
 
-interface WorkerInput {
+export interface WorkerInput {
   sources: ArchitectureSourceFile[];
   sourceSummary: ArchitectureSourceSummary;
   caseSensitivePaths: boolean;
@@ -367,7 +367,7 @@ function parseTypeScriptAliases(sources: ArchitectureSourceFile[]): Array<{ base
   return aliases;
 }
 
-function buildArchitectureMap(input: WorkerInput): ArchitectureMap {
+export function buildArchitectureMap(input: WorkerInput): ArchitectureMap {
   const sources = input.sources.map((source) => ({ ...source, path: normalizePath(source.path) }));
   const fileByPath = new Map<string, ArchitectureSourceFile>();
   const lowerPathIndex = new Map<string, string>();
@@ -869,15 +869,17 @@ function buildArchitectureMap(input: WorkerInput): ArchitectureMap {
   };
 }
 
-const workerScope = self as unknown as {
-  onmessage: ((event: MessageEvent<WorkerInput>) => void) | null;
-  postMessage: (value: unknown) => void;
-};
+if (typeof self !== 'undefined' && typeof (self as any).postMessage === 'function') {
+  const workerScope = self as unknown as {
+    onmessage: ((event: MessageEvent<WorkerInput>) => void) | null;
+    postMessage: (value: unknown) => void;
+  };
 
-workerScope.onmessage = (event) => {
-  try {
-    workerScope.postMessage({ success: true, map: buildArchitectureMap(event.data) });
-  } catch {
-    workerScope.postMessage({ success: false, error: 'Formative could not build an architecture map from these files.' });
-  }
-};
+  workerScope.onmessage = (event) => {
+    try {
+      workerScope.postMessage({ success: true, map: buildArchitectureMap(event.data) });
+    } catch {
+      workerScope.postMessage({ success: false, error: 'Formative could not build an architecture map from these files.' });
+    }
+  };
+}
