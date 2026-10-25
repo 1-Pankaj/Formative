@@ -1,0 +1,302 @@
+@import '@xyflow/react/dist/style.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --app-bg: #09090b;
+    --app-sidebar-bg: #09090b;
+    --surface-card-bg: #121215;
+    --border-default: #27272a;
+    --border-subtle: #1f1f23;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --surface-hover: #18181b;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--app-bg);
+    color: var(--text-secondary);
+  }
+}
+
+/* Formative's own geometric marks stay monochrome; labels carry meaning and state. */
+.formative-glyph {
+  flex-shrink: 0;
+  color: var(--text-secondary) !important;
+}
+
+/* Strictly Suppress React Flow Attribution Watermark */
+.react-flow__attribution {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.6);
+}
+
+/* ─── Themes ─────────────────────────────────────────────── */
+
+/* 1. Dark Theme (Pitch Black / Deep Obsidian) */
+.theme-dark {
+  --app-bg: #09090b;
+  --app-sidebar-bg: #09090b;
+  --surface-card-bg: #121215;
+  --border-default: #27272a;
+  --border-subtle: #1f1f23;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --surface-hover: #18181b;
+  background-color: #09090b;
+  color: #a1a1aa;
+}
+
+/* 2. Light Theme (Clean Minimal Paper) */
+.theme-light {
+  --app-bg: #ffffff;
+  --app-sidebar-bg: #fafafa;
+  --surface-card-bg: #ffffff;
+  --border-default: #e4e4e7;
+  --border-subtle: #f4f4f5;
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --surface-hover: #f4f4f5;
+  background-color: #ffffff;
+  color: #09090b;
+}
+
+/* Dark-authored neutral utilities need stronger values on light surfaces.
+   Disabled controls keep their existing opacity treatment. */
+.theme-light .text-zinc-200 {
+  color: var(--light-surface-text-zinc-200, #27272a);
+}
+.theme-light .text-zinc-300 {
+  color: var(--light-surface-text-zinc-300, #3f3f46);
+}
+.theme-light .text-zinc-400 {
+  color: var(--light-surface-text-zinc-400, #52525b);
+}
+.theme-light .text-zinc-500 {
+  color: var(--light-surface-text-zinc-500, #52525b);
+}
+.theme-light .placeholder-zinc-300::placeholder,
+.theme-light .placeholder-zinc-400::placeholder,
+.theme-light .placeholder-zinc-500::placeholder {
+  color: #52525b;
+  opacity: 1;
+}
+.theme-light [class~="text-[#858585]"] {
+  color: var(--light-surface-muted-text, #52525b);
+}
+.theme-light [class~="hover:text-white"]:hover {
+  color: var(--light-surface-hover-text, #18181b);
+}
+.theme-light :is(
+  [class~="hover:bg-zinc-800"], [class~="hover:bg-zinc-800/60"],
+  [class~="hover:bg-[#18181b]"], [class~="hover:bg-[#18181c]"], [class~="hover:bg-[#2d2d2d]"]
+):hover[class~="hover:text-white"] {
+  color: #ffffff;
+}
+
+/* These exact dark surface tokens set readable on-surface values for both
+   themselves and their descendants, including when used inside light mode. */
+.theme-light :is(
+  [class~="bg-zinc-800"], [class~="bg-zinc-800/60"], [class~="bg-zinc-800/70"], [class~="bg-zinc-800/80"],
+  [class~="bg-zinc-900"], [class~="bg-zinc-900/60"], [class~="bg-zinc-900/70"], [class~="bg-zinc-900/90"],
+  [class~="bg-zinc-950"],
+  [class~="bg-[#09090b]"], [class~="bg-[#0c0c0e]"], [class~="bg-[#0e0e11]"],
+  [class~="bg-[#121215]"], [class~="bg-[#181818]"], [class~="bg-[#18181b]"], [class~="bg-[#18181c]"],
+  [class~="bg-[#1e1e1e]"], [class~="bg-[#252526]"], [class~="bg-[#27272a]"],
+  [class~="bg-[#2d2d2d]"], [class~="bg-[#3e3e42]"]
+):not(.architecture-card-node):not(.node-guide-box) {
+  --light-surface-text-zinc-200: #e4e4e7;
+  --light-surface-text-zinc-300: #d4d4d8;
+  --light-surface-text-zinc-400: #a1a1aa;
+  --light-surface-text-zinc-500: #71717a;
+  --light-surface-muted-text: #858585;
+  --light-surface-hover-text: #ffffff;
+}
+
+/* ─── Node Card Adaptive Theming (Light & Dark) ─────────── */
+.architecture-card-node .node-category-icon {
+  background-color: #27272a;
+  border-color: #3f3f46;
+  color: #d4d4d8;
+}
+.architecture-card-node .node-category-tag {
+  background-color: #27272a;
+  border-color: #3f3f46;
+  color: #d4d4d8;
+}
+.architecture-card-node .node-guide-title {
+  color: #f4f4f5;
+}
+.architecture-card-node .node-guide-copy {
+  color: #d4d4d8;
+}
+.architecture-card-node .node-guide-detail {
+  color: #a1a1aa;
+}
+.theme-light .architecture-card-node {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05) !important;
+}
+.theme-light .architecture-card-node:hover {
+  border-color: #a1a1aa !important;
+}
+.theme-light .architecture-card-node.selected {
+  border-color: #18181b !important;
+  box-shadow: 0 0 0 2px #18181b !important;
+}
+.theme-light .architecture-card-node .node-title {
+  color: #18181b !important;
+}
+.theme-light .architecture-card-node .node-subtitle {
+  color: #71717a !important;
+}
+.theme-light .architecture-card-node .node-tag {
+  background-color: #f4f4f5 !important;
+  border-color: #e4e4e7 !important;
+  color: #3f3f46 !important;
+}
+.theme-light .architecture-card-node .node-category-icon {
+  background-color: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #52525b;
+}
+.theme-light .architecture-card-node .node-category-tag {
+  background-color: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #3f3f46;
+}
+.theme-light .architecture-card-node .node-guide-box {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+}
+.theme-light .architecture-card-node .node-guide-title {
+  color: #18181b;
+}
+.theme-light .architecture-card-node .node-guide-copy {
+  color: #334155;
+}
+.theme-light .architecture-card-node .node-guide-detail {
+  border-color: #cbd5e1;
+  color: #475569;
+}
+.theme-light .architecture-card-node button:hover {
+  color: #18181b;
+}
+.theme-light .architecture-card-node .node-status-border {
+  border-color: #ffffff !important;
+}
+
+/* ─── React Flow Canvas Integration ─────────────────────── */
+.theme-dark .react-flow__background {
+  background-color: #09090b !important;
+}
+
+.theme-light .react-flow__background {
+  background-color: #ffffff !important;
+}
+
+.theme-dark .react-flow__edge-path {
+  stroke: #3f3f46;
+  stroke-width: 1.5;
+}
+
+.theme-light .react-flow__edge-path {
+  stroke: #d4d4d8;
+  stroke-width: 1.5;
+}
+
+.react-flow__controls {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.theme-dark .react-flow__controls {
+  background-color: #121215 !important;
+  border: 1px solid #27272a !important;
+}
+
+.theme-light .react-flow__controls {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+.theme-dark .react-flow__controls-button {
+  background-color: #121215 !important;
+  border-bottom: 1px solid #27272a !important;
+  fill: #a1a1aa !important;
+  color: #a1a1aa !important;
+}
+
+.theme-light .react-flow__controls-button {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e4e4e7 !important;
+  fill: #52525b !important;
+  color: #52525b !important;
+}
+
+.theme-dark .react-flow__controls-button:hover {
+  background-color: #1f1f23 !important;
+  fill: #ffffff !important;
+}
+
+.theme-light .react-flow__controls-button:hover {
+  background-color: #f4f4f5 !important;
+  fill: #000000 !important;
+}
+
+/* MiniMap Styling */
+.theme-dark .react-flow__minimap {
+  background-color: #121215 !important;
+  border: 1px solid #27272a !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.theme-light .react-flow__minimap {
+  background-color: #f4f4f5 !important;
+  border: 1px solid #e4e4e7 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+.formative-canvas-minimap {
+  width: 160px !important;
+  height: 104px !important;
+}
+
+@media (max-width: 1180px) {
+  .formative-canvas-minimap {
+    display: none !important;
+  }
+}

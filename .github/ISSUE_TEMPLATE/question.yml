@@ -1,0 +1,21 @@
+name: Question
+description: Ask how Formative works or how to use a supported workflow.
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: Do not include API keys, provider transcripts, private project files, or unredacted local paths.
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like help with?
+      description: Include the Formative version and the workflow you are using.
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Include any steps or redacted error messages that may help explain the issue.

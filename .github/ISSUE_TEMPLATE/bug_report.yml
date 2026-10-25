@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible problem in Formative.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not include API keys, provider transcripts, private project files, or
+        unredacted local paths. Report security vulnerabilities privately using
+        the instructions in SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Formative version or commit
+      description: For a development build, provide the commit hash if available.
+      placeholder: 1.0.0 or 82ccc45
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows 11
+        - Windows 10
+        - Other (please specify below)
+    validations:
+      required: true
+  - type: input
+    id: platform-other
+    attributes:
+      label: Other platform or Windows details
+      description: Include the OS version and whether you used the desktop app or browser preview.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the actions that lead to the problem.
+      placeholder: "1. Open a project…\n2. Select…\n3. Observe…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or screenshots
+      description: Redact credentials, personal data, project names, and local paths before attaching.
