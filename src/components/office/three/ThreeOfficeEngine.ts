@@ -57,6 +57,10 @@ export interface ThreeOfficeInstance {
   setEmployees: (team: ProjectOfficeTeam) => void;
   setAgentActivity: (activity: OfficeAgentActivity[]) => void;
   centerCamera: () => void;
+  focusEmployee: (employeeId?: string, zoomIn?: boolean) => void;
+  setCameraTrackTarget: (employeeId: string | null) => void;
+  showSpeechBubble: (employeeId: string, text: string, dur?: number) => void;
+  getPersonScreenCoords: (employeeId?: string) => { x: number; y: number; visible: boolean; name: string; role: string; employeeId?: string } | null;
   resize: (width?: number, height?: number) => void;
   deselect: () => void;
   destroy: () => void;
@@ -211,7 +215,9 @@ export function createThreeOffice(
                 screenSpacePanning: !1
             });
 
-            var oe = new e.Vector3(1, 0, 0)   /* camera right vector */
+            var camPan = null;
+            var trackedTargetPerson = null;
+var oe = new e.Vector3(1, 0, 0)   /* camera right vector */
               , se = 0                          /* camera azimuth */
               , ce = re
               , le = new e.Vector3;
@@ -801,6 +807,155 @@ if(uLampOn>0.){
                     n[r].colorSpace = e.SRGBColorSpace,
                     n[r]
                 }
+            })();
+
+            /* ---- dynamic comic speech bubble data generator ---- */
+            var createSpeechBubbleData = (function() {
+                let cache = new Map();
+                const MAX_BUBBLE_CACHE = 48;
+                let measureCanvas = m(600, 200);
+                let mctx = measureCanvas.getContext('2d');
+
+                return function(name, text) {
+                    let cleanText = (text || '...').trim();
+                    let safeName = name ? name.toUpperCase() : '';
+                    let cacheKey = `${safeName}:${cleanText}`;
+                    if (cache.has(cacheKey)) {
+                        const val = cache.get(cacheKey);
+                        cache.delete(cacheKey);
+                        cache.set(cacheKey, val);
+                        return val;
+                    }
+
+                    let fontSize = 26;
+                    let font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                    mctx.font = font;
+
+                    // Intelligent word wrap (max width ~380px)
+                    let words = cleanText.split(/\s+/);
+                    let lines = [];
+                    let cur = '';
+                    let maxLineWidthAllowed = 380;
+
+                    for (let w of words) {
+                        let testLine = cur ? `${cur} ${w}` : w;
+                        if (mctx.measureText(testLine).width > maxLineWidthAllowed && cur) {
+                            lines.push(cur);
+                            cur = w;
+                            if (lines.length === 4) break;
+                        } else {
+                            cur = testLine;
+                        }
+                    }
+                    if (cur && lines.length < 4) lines.push(cur);
+                    if (lines.length === 0) lines = [cleanText];
+
+                    // Compute maximum line width
+                    let maxLineW = Math.max(...lines.map(l => mctx.measureText(l).width));
+                    let nameFont = `bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                    if (safeName) {
+                        mctx.font = nameFont;
+                        let nameW = mctx.measureText(safeName).width;
+                        mctx.font = font;
+                        if (nameW + 48 > maxLineW) maxLineW = nameW + 48;
+                    }
+
+                    let padX = 26;
+                    let isDots = lines.length === 1 && (cleanText === '···' || cleanText === '...');
+                    let bubbleW = Math.max(isDots ? 84 : 160, Math.ceil(maxLineW + padX * 2));
+
+                    let lineHeight = 34;
+                    let textBlockH = lines.length * lineHeight;
+                    let padTop = safeName ? 42 : 18;
+                    let padBottom = 22;
+                    let bubbleH = textBlockH + padTop + padBottom;
+                    let tailH = 16;
+
+                    let canvasW = bubbleW + 20;
+                    let canvasH = bubbleH + tailH + 12;
+
+                    let cv = m(canvasW, canvasH);
+                    let ctx = cv.getContext('2d');
+
+                    // Draw comic speech bubble
+                    let bx = 10, by = 8, r = 16;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.strokeStyle = '#18181c';
+                    ctx.lineWidth = 5;
+                    ctx.lineJoin = 'round';
+
+                    ctx.beginPath();
+                    ctx.moveTo(bx + r, by);
+                    ctx.lineTo(bx + bubbleW - r, by);
+                    ctx.quadraticCurveTo(bx + bubbleW, by, bx + bubbleW, by + r);
+                    ctx.lineTo(bx + bubbleW, by + bubbleH - r);
+                    ctx.quadraticCurveTo(bx + bubbleW, by + bubbleH, bx + bubbleW - r, by + bubbleH);
+
+                    // Tail pointing down toward character head
+                    let tx = bx + bubbleW / 2, ty = by + bubbleH;
+                    ctx.lineTo(tx + 14, ty);
+                    ctx.lineTo(tx, ty + tailH);
+                    ctx.lineTo(tx - 14, ty);
+
+                    ctx.lineTo(bx + r, by + bubbleH);
+                    ctx.quadraticCurveTo(bx, by + bubbleH, bx, by + bubbleH - r);
+                    ctx.lineTo(bx, by + r);
+                    ctx.quadraticCurveTo(bx, by, bx + r, by);
+                    ctx.closePath();
+
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Name Tag Header (Crisp, bold, prominent 20px)
+                    if (safeName) {
+                        ctx.font = nameFont;
+                        ctx.fillStyle = '#ea580c';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText(safeName, tx, by + 12);
+                    }
+
+                    // Render text lines
+                    ctx.font = font;
+                    ctx.fillStyle = '#09090b';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    let startY = by + padTop + lineHeight / 2 - 2;
+                    lines.forEach((line, i) => {
+                        ctx.fillText(line, tx, startY + i * lineHeight);
+                    });
+
+                    let tex = new e.CanvasTexture(cv);
+                    tex.colorSpace = e.SRGBColorSpace;
+                    tex.minFilter = e.LinearFilter;
+                    tex.magFilter = e.LinearFilter;
+
+                    // Calculate 3D world units: height is scaled so it's readable
+                    let worldH = Math.max(0.62, (bubbleH + tailH) * 0.0084);
+                    let worldW = worldH * (canvasW / canvasH);
+
+                    let result = {
+                        texture: tex,
+                        worldW: worldW,
+                        worldH: worldH,
+                        canvasW: canvasW,
+                        canvasH: canvasH
+                    };
+
+                    if (cache.size >= MAX_BUBBLE_CACHE) {
+                        const oldestKey = cache.keys().next().value;
+                        if (oldestKey) {
+                            const oldestVal = cache.get(oldestKey);
+                            if (oldestVal && oldestVal.texture) {
+                                try { oldestVal.texture.dispose(); } catch (_) {}
+                            }
+                            cache.delete(oldestKey);
+                        }
+                    }
+                    cache.set(cacheKey, result);
+                    return result;
+                };
             })();
             /* ================= MATERIALS / LAMPS ================= */
 
@@ -3299,7 +3454,8 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
             PGEO.translate(0, 24 * cn / 2, 0);
             var RGEO = new e.CircleGeometry(.3, 12).rotateX(-Math.PI / 2)
               , RBLOB = new e.MeshBasicMaterial({ color: 0, transparent: !0, opacity: .26, depthWrite: !1 })
-              , BGEO = new e.PlaneGeometry(.72, .72);
+              , BGEO = new e.PlaneGeometry(.72, .72)
+              , TEXT_BGEO = new e.PlaneGeometry(3.2, 1.4);
 
             var PERS = []
               , personMats = []
@@ -3365,11 +3521,36 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                 }
                 addSteps(t) { this.steps += t * 1.9 }
                 say(txt, dur = 2.6) {
-                    this.bubbleMat.map = En(txt),
-                    this.bubbleMat.needsUpdate = !0,
-                    this.bubble.visible = !0,
-                    this.bubbleT = 0,
-                    this.bubbleDur = dur
+                    this.isTextBubble = !1;
+                    if (this.bubble.geometry !== BGEO) {
+                        this.bubble.geometry.dispose();
+                        this.bubble.geometry = BGEO;
+                    }
+                    this.bubbleMat.map = En(txt);
+                    this.bubbleMat.depthTest = !1;
+                    this.bubbleMat.depthWrite = !1;
+                    this.bubbleMat.needsUpdate = !0;
+                    this.bubble.renderOrder = 999;
+                    this.bubble.visible = !0;
+                    this.bubbleT = 0;
+                    this.bubbleDur = dur;
+                }
+                sayText(txt, dur = 8.0) {
+                    this.isTextBubble = !0;
+                    let data = createSpeechBubbleData(this.name, txt);
+                    if (this.bubble.geometry !== BGEO) {
+                        this.bubble.geometry.dispose();
+                    }
+                    this.bubble.geometry = new e.PlaneGeometry(data.worldW, data.worldH);
+                    this.bubbleMat.map = data.texture;
+                    this.bubbleMat.depthTest = !1;
+                    this.bubbleMat.depthWrite = !1;
+                    this.bubbleMat.needsUpdate = !0;
+                    this.bubble.renderOrder = 999;
+                    this.bubbleWorldH = data.worldH;
+                    this.bubble.visible = !0;
+                    this.bubbleT = 0;
+                    this.bubbleDur = dur;
                 }
                 begin(task) {
                     task.label && (this.label = task.label),
@@ -3471,12 +3652,15 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                         default: t = Math.floor(this.animT * 1.6) % 2
                     }
                     t !== this.frame && (this.frame = t, this.tex.offset.x = t / this.sheet.frames);
-                    this.bubble.position.y = this.anim === `sit` || this.anim === `sitsip` || this.anim === `sittype` ? 1.18 : 1.5
+                    let baseHeadY = (this.anim === `sit` || this.anim === `sitsip` || this.anim === `sittype`) ? 0.95 : 1.25;
+                    this.bubble.position.y = this.isTextBubble 
+                        ? (baseHeadY + (this.bubbleWorldH || 0.6) / 2 + 0.05) 
+                        : (baseHeadY + 0.36);
                 }
                 billboard() {
                     this.sprite.rotation.set(-.26, se, 0),
                     this.sprite.scale.x = this.facing,
-                    this.bubble.rotation.set(0, se, 0)
+                    this.bubble.rotation.set(-.26, se, 0)
                 }
             };
 
@@ -3701,7 +3885,7 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                 p.formativeTemplate = {
                     name: p.name,
                     role: p.role,
-                    roleTitle: p.roleTitle || ROLES[p.role] || p.role,
+                    roleTitle: meta.officeRoleTitle || p.roleTitle || ROLES[p.role] || p.role,
                     params: { ...params },
                     behave: p.behave,
                     night: Boolean(p.night),
@@ -3709,9 +3893,15 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     baseLeave: p.baseLeave,
                 };
                 p.formativeEnabled = true;
+                p.isBench = Boolean(meta.isBench);
+                p.isFacility = Boolean(meta.isFacility);
+                p.isCeo = Boolean(meta.isCeo);
+                if (meta.formativeEmployeeId) p.formativeEmployeeId = meta.formativeEmployeeId;
+                if (meta.officeRoleTitle) p.officeRoleTitle = meta.officeRoleTitle;
+                if (meta.officeSkills) p.officeSkills = [...meta.officeSkills];
                 return ROSTER.push(p), STAFF.push(p), p
             }
-            /* seated + standing desk workers — 12 */
+            /* seated + standing desk workers — 12 (Configurable Employee Bench) */
             [
                 [`frontend`, 0, {}, `Momo`, 7.5, 17.8], [`backend`, 1, {}, `Pixel`, 8.1, 18.3], [`designer`, 2, { glasses: !0 }, `Juno`, 8.6, 18.9],
                 [`fullstack`, 3, {}, `Chip`, 7.8, 17.5], [`qa`, 4, {}, `Luna`, 8.9, 19.2], [`devops`, 5, {}, `Vega`, 9.2, 21.1],
@@ -3723,7 +3913,8 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: nm, role, behave: `desk`, stand: !1, y0: .41,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `sittype`, homeAnim: `sittype`, deskSpot: ds,
-                    baseArrive: arr, baseLeave: lv, track: s(TRACKS)
+                    baseArrive: arr, baseLeave: lv, track: s(TRACKS),
+                    isBench: true
                 })
             });
             [
@@ -3735,17 +3926,19 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: nm, role, behave: `desk`, stand: !0, y0: 0,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `standtype`, homeAnim: `standtype`, deskSpot: ds,
-                    baseArrive: arr, baseLeave: lv, track: s(TRACKS)
+                    baseArrive: arr, baseLeave: lv, track: s(TRACKS),
+                    isBench: true
                 })
             });
-            {   /* Iris — now at the corner standing bar (her old chair pinched the wall) */
+            {   /* Iris — now at the corner standing bar */
                 let d = deskSpots[11]
                   , ds = { ax: d.x, az: d.z - .75, sx: d.x, sz: d.z - .75, y: 0, fx: d.x, fz: d.z + 3, stand: !0 };
                 addStaff(personParams({ glasses: !0, style: `ponytail` }), {
                     name: `Iris`, role: `pm`, behave: `desk`, stand: !0, y0: 0,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `standtype`, homeAnim: `standtype`, deskSpot: ds,
-                    baseArrive: 8.8, baseLeave: 18.4, track: s(TRACKS)
+                    baseArrive: 8.8, baseLeave: 18.4, track: s(TRACKS),
+                    isBench: true
                 })
             }
             /* CEO */
@@ -3755,27 +3948,39 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: `Rex`, role: `ceo`, behave: `ceo`, y0: .41,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `sittype`, homeAnim: `sittype`, deskSpot: ds,
-                    baseArrive: 8.3, baseLeave: 18.5, track: `“the founder's playlist” — Rex`
+                    baseArrive: 8.3, baseLeave: 18.5, track: `“the founder's playlist” — Rex`,
+                    isCeo: true, formativeEmployeeId: `emp-ceo`, officeRoleTitle: `Chief Executive Agent`,
+                    officeSkills: [`Task Planning`, `Project Context`, `Work Coordination`]
                 })
             }
-            /* receptionist — first in, last out of the day crew */
+            /* receptionist — front of house hospitality */
             {
                 let ds = { ax: -12.6, az: 4.35, sx: -12.6, sz: 4.35, y: 0, fx: -12.6, fz: 9, stand: !0 };
                 addStaff(personParams({ headset: !0, style: `bun`, shirt: `#f2f0e6` }), {
                     name: `Zara`, role: `reception`, behave: `reception`, y0: 0,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `idle`, homeAnim: `idle`, deskSpot: ds,
-                    baseArrive: 6.9, baseLeave: 19.2, track: s(TRACKS)
+                    baseArrive: 6.9, baseLeave: 19.2, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-zara`, officeRoleTitle: `Receptionist`,
+                    officeSkills: [`Guest Welcoming`, `Front Desk`, `Mail & Packages`, `Office Logistics`]
                 })
             }
             /* meeting trio — their meeting-room seats ARE their desks */
+            const MEET_ROLES = {
+                Finn: { roleTitle: `Senior Backend Engineer`, skills: [`Distributed Systems`, `Database Optimization`, `High-Load Services`] },
+                Otto: { roleTitle: `Lead Product Designer`, skills: [`Design Systems`, `Interface Ergonomics`, `Visual Polish`] },
+                Mara: { roleTitle: `Data & Telemetry Specialist`, skills: [`Metrics Analysis`, `Event Pipelines`, `Growth Data`] },
+            };
             [[10.2, `Finn`, `backend`, 7.9, 18.2], [11.8, `Otto`, `designer`, 8.5, 18.7], [13.4, `Mara`, `analyst`, 7.6, 17.7]].forEach(([x, nm, role, arr, lv]) => {
                 let ds = { ax: x, az: -5.75, sx: x, sz: -5.05, y: .41, fx: x, fz: -1, stand: !1 };
+                const info = MEET_ROLES[nm] || { roleTitle: ROLES[role] || role, skills: [] };
                 addStaff(personParams(role === `designer` ? { glasses: !0, style: `long` } : {}), {
                     name: nm, role, behave: `meet`, y0: .41,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `sittype`, homeAnim: `sittype`, deskSpot: ds,
-                    baseArrive: arr, baseLeave: lv, track: s(TRACKS)
+                    baseArrive: arr, baseLeave: lv, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-${nm.toLowerCase()}`,
+                    officeRoleTitle: info.roleTitle, officeSkills: info.skills
                 })
             });
             /* presenter */
@@ -3785,7 +3990,9 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: `Tobi`, role: `presenter`, behave: `presenter`, y0: 0,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `standtype`, homeAnim: `standtype`, deskSpot: ds,
-                    baseArrive: 8.6, baseLeave: 18.4, track: `“conference keynote energy” — Tobi`
+                    baseArrive: 8.6, baseLeave: 18.4, track: `“conference keynote energy” — Tobi`,
+                    isFacility: true, formativeEmployeeId: `ambient-tobi`, officeRoleTitle: `Solutions Architect`,
+                    officeSkills: [`System Pitches`, `Architecture Demos`, `Keynotes`, `Tech Talks`]
                 })
             }
             /* sysadmin — lives next to the rack terminal */
@@ -3795,7 +4002,9 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: `Dex`, role: `sysadmin`, behave: `sysadmin`, y0: 0,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `standtype`, homeAnim: `standtype`, deskSpot: ds,
-                    baseArrive: 7.8, baseLeave: 21.6, track: s(TRACKS)
+                    baseArrive: 7.8, baseLeave: 21.6, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-dex`, officeRoleTitle: `System Administrator`,
+                    officeSkills: [`Linux Racks`, `Network Switches`, `Cooling & Power`, `Terminal Ops`, `Infrastructure`]
                 })
             }
             /* Pim — "kitchen campus" desk at the round table */
@@ -3805,7 +4014,9 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: `Pim`, role: `mobile`, behave: `desk`, y0: .41,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `sittype`, homeAnim: `sittype`, deskSpot: ds,
-                    baseArrive: 9.4, baseLeave: 18.2, track: s(TRACKS)
+                    baseArrive: 9.4, baseLeave: 18.2, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-pim`, officeRoleTitle: `Mobile Developer`,
+                    officeSkills: [`iOS & Android`, `React Native`, `Swift`, `Mobile APIs`]
                 })
             }
             /* lounge — Uma on the sofa (now facing the room) */
@@ -3815,7 +4026,9 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     name: `Uma`, role: `techlead`, behave: `lounge`, y0: .4,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `sittype`, homeAnim: `sittype`, deskSpot: ds,
-                    baseArrive: 8.8, baseLeave: 18.8, track: s(TRACKS)
+                    baseArrive: 8.8, baseLeave: 18.8, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-uma`, officeRoleTitle: `Staff Architect`,
+                    officeSkills: [`System Architecture`, `Technical Strategy`, `RFCs`, `Mentorship`]
                 })
             }
             /* walkers — now pathfinding, so they never clip the furniture */
@@ -3826,6 +4039,8 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `walk`, homeAnim: `walk`, deskSpot: ds,
                     baseArrive: 7.2, baseLeave: 19.6, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-nix`, officeRoleTitle: `Site Reliability Engineer`,
+                    officeSkills: [`Uptime & Monitoring`, `CI/CD Pipelines`, `Incident Response`],
                     routes: [[
                         [-1, 6, 2], [-4.5, 1, 0], [-6.5, -3.2, 2.5], [-6.5, -8.5, 0], [-9.4, -8.2, 4, `Coffee run`], [-6.5, -8.5, 0], [-6.5, -3.2, 2.5], [-4.5, 1, 0], [-1, 6, 3], [1.5, 6.5, 0], [-1, 6, 1]
                     ]]
@@ -3839,18 +4054,33 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     home: { x: ds.sx, z: ds.sz, fx: ds.fx, fz: ds.fz },
                     anim: `walk`, homeAnim: `walk`, deskSpot: ds,
                     baseArrive: 7.1, baseLeave: 18.7, track: s(TRACKS),
+                    isFacility: true, formativeEmployeeId: `ambient-ola`, officeRoleTitle: `Office Operations Manager`,
+                    officeSkills: [`Facilities Management`, `Team Culture`, `Snack Inventory`, `Events`],
                     routes: [[
                         [1, 5, 2], [4.2, 4, 0], [4.2, .5, 3, `Checking the meeting room`], [4.2, -6.5, 0], [2.5, -8.8, 2.5, `Visiting the devs`], [4.2, -6.5, 0], [4.2, 1.5, 0], [1, 5, 3], [-2.5, 6, 0], [1, 5, 1]
                     ]]
                 })
             }
             /* sidewalk life — neighbours strolling the whole wide world now */
+            const NEIGHBOUR_DEFS = {
+                Pip: { roleTitle: `Neighborhood Regular`, skills: [`Coffee Connoisseur`, `Sidewalk Strolling`, `Local Gossip`] },
+                Ash: { roleTitle: `Local Resident`, skills: [`Dog Walking`, `Morning Jogging`, `Community News`] },
+                Mo: { roleTitle: `Tech Enthusiast`, skills: [`Tech Podcasts`, `Gadgets`, `Startup Watching`] },
+                Nils: { roleTitle: `Local Freelancer`, skills: [`Remote Work`, `Cafe Hopping`, `Design Thinking`] },
+                Vera: { roleTitle: `Nearby Coworker`, skills: [`Product Strategy`, `Lunch Walks`, `Sunny Strolls`] },
+                Tom: { roleTitle: `Neighborhood Courier`, skills: [`Package Deliveries`, `Bicycle Nav`, `Speedy Drops`] },
+            };
             [[`Pip`, {}, -20], [`Ash`, { style: `cap` }, 5], [`Mo`, { glasses: !0 }, 22], [`Nils`, { style: `short` }, -56], [`Vera`, { style: `ponytail` }, 52], [`Tom`, { style: `cap`, shirt: `#8fb8ff` }, 76]].forEach(([nm, over, x0]) => {
+                const info = NEIGHBOUR_DEFS[nm] || { roleTitle: `Neighborhood Regular`, skills: [`Sidewalk Strolling`] };
                 let p = spawn(personParams(over), {
                     name: nm, role: `visitor`, behave: `ped`, y0: 0,
                     home: { x: x0, z: 13.5, fx: x0 + 1, fz: 13.5 },
                     anim: `walk`, homeAnim: `walk`, deskSpot: null, track: s(TRACKS)
                 });
+                p.formativeEmployeeId = `neighbour-${nm.toLowerCase()}`;
+                p.officeRoleTitle = info.roleTitle;
+                p.officeSkills = [...info.skills];
+                p.isPed = true;
                 ROSTER.push(p), PEDS.push(p)
             });
 
@@ -3970,11 +4200,36 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     Math.abs(t2) > .01 && (this.facing = t2 > 0 ? 1 : -1)
                 }
                 say(txt, dur = 2.6) {
-                    this.bubbleMat.map = En(txt),
-                        this.bubbleMat.needsUpdate = !0,
-                        this.bubble.visible = !0,
-                        this.bubbleT = 0,
-                        this.bubbleDur = dur
+                    this.isTextBubble = !1;
+                    if (this.bubble.geometry !== BGEO) {
+                        this.bubble.geometry.dispose();
+                        this.bubble.geometry = BGEO;
+                    }
+                    this.bubbleMat.map = En(txt);
+                    this.bubbleMat.depthTest = !1;
+                    this.bubbleMat.depthWrite = !1;
+                    this.bubbleMat.needsUpdate = !0;
+                    this.bubble.renderOrder = 999;
+                    this.bubble.visible = !0;
+                    this.bubbleT = 0;
+                    this.bubbleDur = dur;
+                }
+                sayText(txt, dur = 3.5) {
+                    this.isTextBubble = !0;
+                    let data = createSpeechBubbleData(this.name, txt);
+                    if (this.bubble.geometry !== BGEO) {
+                        this.bubble.geometry.dispose();
+                    }
+                    this.bubble.geometry = new e.PlaneGeometry(data.worldW, data.worldH);
+                    this.bubbleMat.map = data.texture;
+                    this.bubbleMat.depthTest = !1;
+                    this.bubbleMat.depthWrite = !1;
+                    this.bubbleMat.needsUpdate = !0;
+                    this.bubble.renderOrder = 999;
+                    this.bubbleWorldH = data.worldH;
+                    this.bubble.visible = !0;
+                    this.bubbleT = 0;
+                    this.bubbleDur = dur;
                 }
                 bubbleTick(dt) {
                     let t2 = this.bubble;
@@ -4089,12 +4344,15 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                             : this.anim === `sleep` ? 3
                                 : this.anim === `groom` && Math.floor(this.animT * 1.6) % 2 ? 4 : 2;
                     fr !== this.frame && (this.frame = fr, this.tex.offset.x = fr / this.sheet.frames);
-                    this.bubble.position.y = this.kind === `cat` ? (this.anim === `sleep` ? .42 : .58) : .55
+                    let baseHeadY = this.kind === `cat` ? (this.anim === `sleep` ? .38 : .52) : (this.anim === `sit` ? .45 : .58);
+                    this.bubble.position.y = this.isTextBubble
+                        ? (baseHeadY + (this.bubbleWorldH || .45) / 2 + .12)
+                        : (baseHeadY + .36);
                 }
                 billboard() {
                     this.sprite.rotation.set(-.26, se, 0),
-                        this.sprite.scale.x = this.facing,
-                        this.bubble.rotation.set(0, se, 0)
+                    this.sprite.scale.x = this.facing,
+                    this.bubble.rotation.set(-.26, se, 0)
                 }
             };
 
@@ -4148,7 +4406,7 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                 ]
             });
             new Pet({
-                kind: `cat`, name: `Suki`,
+                kind: `cat`, name: `Mimi`,
                 params: { fur: `#f2e6d0`, chest: `#fffaf0`, eye: `#5a8ac8`, coat: `calico`, acc: `#e88a4a`, acc2: `#4a4550` },
                 home: [-14.9, 12.7, 0],
                 spots: [
@@ -4361,8 +4619,8 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                 COURIER.setXZ(sp[0], sp[1]);
                 COURIER.group.position.y = 0;
                 COURIER.anim = `walk`;
-                COURIER.label = `Delivery for Formative`;
-                COURIER.goTo(DOOR_OUT[0], DOOR_OUT[1], `Delivery for Formative`, .95);
+                COURIER.label = `Delivery for Structra`;
+                COURIER.goTo(DOOR_OUT[0], DOOR_OUT[1], `Delivery for Structra`, .95);
                 COURIER.queue.push({ t: `wait`, dur: 2.6, anim: `idle`, label: `Dropping off packages`, bubbles: [`📦`, `🚚`] });
                 COURIER.queue.push({ t: `fn`, fn: () => {
                     let z2 = STAFF.find(q => q.formativeEnabled && q.role === `reception` && q.presence === `in` && !q.busy);
@@ -4622,25 +4880,58 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                 if ($?.formativeEmployeeId) callbacks.onSelectPerson?.(getPersonInfo($));
             }
 
+            var lastAppliedTeamSignature = '';
+            function computeTeamSignature(team) {
+                if (!team) return '';
+                const ceo = team.ceo;
+                const employees = Array.isArray(team.employees) ? team.employees : [];
+                return `${ceo?.id || ''}:${ceo?.name || ''}:${employees.map(e => `${e.id}:${e.name}:${e.enabled}:${e.department}`).join(';')}`;
+            }
+
             function applyOfficeTeam(team) {
+                const sig = computeTeamSignature(team);
+                if (sig && sig === lastAppliedTeamSignature) {
+                    return;
+                }
+                lastAppliedTeamSignature = sig;
                 const ceo = team?.ceo;
-                const available = STAFF.filter(p => p.formativeTemplate && p.formativeTemplate.role !== `ceo`);
-                for (const p of STAFF) restoreStaffMember(p);
                 if (ceo) {
-                    const ceoActor = STAFF.find(p => p.formativeTemplate?.role === `ceo`);
+                    const ceoActor = STAFF.find(p => p.isCeo || p.role === `ceo` || p.formativeTemplate?.role === `ceo`);
                     if (ceoActor) applyProfileToStaff(ceoActor, ceo, `ceo`);
                 }
-                const unused = new Set(available);
+
+                // 1. Reset configurable desk bench workers (only desks 0..11)
+                const benchStaff = STAFF.filter(p => p.isBench);
+                for (const p of benchStaff) {
+                    restoreStaffMember(p); // sets presence = 'out', group.visible = false
+                }
+
+                // 2. Populate desk bench with enabled project employees
                 const employeeProfiles = (Array.isArray(team?.employees) ? team.employees : []).filter(item => item?.enabled).slice(0, MAX_OFFICE_EMPLOYEES);
+                const unusedBench = new Set(benchStaff);
                 for (const profile of employeeProfiles) {
                     const preferences = employeeRolePreferences[profile.department] || [];
-                    const matched = [...unused].find(p => preferences.includes(p.formativeTemplate.role));
-                    const actor = matched || [...unused].find(p => p.formativeTemplate.behave === `desk`) || unused.values().next().value;
+                    const matched = [...unusedBench].find(p => preferences.includes(p.formativeTemplate?.role));
+                    const actor = matched || unusedBench.values().next().value;
                     if (!actor) break;
-                    unused.delete(actor);
+                    unusedBench.delete(actor);
                     const role = profile.department === `general` ? `fullstack` : profile.department;
                     applyProfileToStaff(actor, profile, role);
+                    actor.presence = `in`;
+                    actor.group.visible = true;
+                    placeAtDesk(actor);
                 }
+
+                // 3. Keep Facility / Ambient Staff intact and visible!
+                const facilityStaff = STAFF.filter(p => p.isFacility);
+                for (const p of facilityStaff) {
+                    p.formativeEnabled = true;
+                    const h = S.hour;
+                    const inSchedule = p.night ? (h >= p.sched.arrive || h < p.sched.leave) : (h >= p.sched.arrive && h < p.sched.leave);
+                    p.presence = inSchedule ? `in` : `out`;
+                    p.group.visible = inSchedule;
+                }
+
                 DIR.day = S.day;
                 rollDay();
                 presenceSnap();
@@ -4777,16 +5068,45 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
     return h < 5 || h >= 20.5 ? 'moon' : h < 7.5 || (h >= 16.8 && h < 19.5) ? 'sunrise' : 'sun';
   }
 
+  const DEFAULT_ROLE_SKILLS: Record<string, string[]> = {
+    ceo: ['Task Planning', 'Context Routing', 'Tool Orchestration', 'Code Synthesis'],
+    reception: ['Guest Welcoming', 'Front Desk', 'Mail & Packages', 'Office Logistics'],
+    sysadmin: ['Linux Racks', 'Network Switches', 'Cooling & Power', 'Terminal Ops', 'Infrastructure'],
+    presenter: ['System Pitches', 'Architecture Demos', 'Keynotes', 'Tech Talks'],
+    backend: ['Distributed Systems', 'API Services', 'Database Optimization', 'Node/Python'],
+    designer: ['UI/UX Polish', 'Design Systems', 'Interface Ergonomics', 'Visual Polish'],
+    analyst: ['Telemetry Analysis', 'Data Pipelines', 'Metrics & Reporting'],
+    mobile: ['iOS & Android', 'React Native', 'Swift', 'Mobile APIs'],
+    techlead: ['System Architecture', 'Technical Strategy', 'RFCs', 'Mentorship'],
+    sre: ['Uptime & Monitoring', 'CI/CD Pipelines', 'Incident Response'],
+    officemgr: ['Facilities Management', 'Team Culture', 'Snack Inventory', 'Events'],
+    visitor: ['Neighborhood Regular', 'Coffee Connoisseur', 'Sidewalk Strolling'],
+    frontend: ['React Components', 'Tailwind CSS', 'Accessibility', 'State Management'],
+    fullstack: ['Full-stack Integration', 'Hotfixes', 'End-to-End Architecture'],
+    qa: ['Unit Testing', 'E2E Testing', 'Build Verification', 'Regression Tests'],
+  };
+
+  function findPersonInRoster(idOrName?: string | null) {
+    if (!idOrName) return null;
+    const clean = idOrName.toLowerCase();
+    return ROSTER.find(p => 
+      p.formativeEmployeeId === idOrName ||
+      (p.name && p.name.toLowerCase() === clean) ||
+      (p.name && `person-${p.name.toLowerCase()}` === clean) ||
+      (p.role === 'ceo' && idOrName === 'emp-ceo')
+    ) || null;
+  }
+
   function getPersonInfo(p) {
     if (!p) return null;
     return {
       name: p.name,
       role: p.role,
       roleTitle: p.officeRoleTitle || ROLES[p.role] || p.role,
-      employeeId: p.formativeEmployeeId,
+      employeeId: p.formativeEmployeeId || (p.role === 'ceo' ? 'emp-ceo' : `person-${p.name.toLowerCase()}`),
       agentStatus: p.agentStatus,
       agentSummary: p.agentSummary,
-      skills: Array.isArray(p.officeSkills) ? [...p.officeSkills] : [],
+      skills: Array.isArray(p.officeSkills) && p.officeSkills.length > 0 ? [...p.officeSkills] : (DEFAULT_ROLE_SKILLS[p.role] || []),
       act: p.agentSummary || p.label,
       mood: moodFor(S.hour),
       track: p.track,
@@ -4837,6 +5157,17 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
     if (hit) {
       $ = hit.object.userData.agent;
       if ($) {
+        // If clicked on an animal (cat or dog), show pre-configured speech bubble and do not open chat
+        if ($.kind === 'cat' || $.kind === 'dog' || $.role === 'cat' || $.role === 'dog') {
+          const isDog = $.kind === 'dog' || $.role === 'dog';
+          const petBarks = isDog
+            ? ['Woof! 🐶', 'Arf arf! *wags tail*', 'Pant pant! Happy to see you! 🎾', 'Bork! *excited wiggle*', 'Arf! 🐕']
+            : ['Meow! 🐱', 'Purrrrr...', 'Prrrbt! *stretches*', '*rubs against your leg* :3', 'Meow? *slow blink*', 'Zzz... 🐾'];
+          $.sayText(s(petBarks), 3.5);
+          na();
+          return;
+        }
+
         callbacks.onSelectPerson && callbacks.onSelectPerson(getPersonInfo($));
         $.say(s(['💬', '👋', '✨', '💻']), 1.6);
       }
@@ -4925,6 +5256,30 @@ if (ca < 0) {
         icon: ic
     });
 }
+                if (camPan) {
+                    camPan.t += dt;
+                    let progress = Math.min(1, camPan.t / camPan.dur);
+                    let ease = progress < 0.5 ? 4 * progress * progress * progress : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+                    if (camPan.person) {
+                        camPan.targetX = camPan.person.x;
+                        camPan.targetZ = camPan.person.z;
+                    }
+                    ae.target.x = camPan.startX + (camPan.targetX - camPan.startX) * ease;
+                    ae.target.z = camPan.startZ + (camPan.targetZ - camPan.startZ) * ease;
+                    if (camPan.startDist && camPan.targetDist) {
+                        let newDist = camPan.startDist + (camPan.targetDist - camPan.startDist) * ease;
+                        le.setLength(newDist);
+                        ie.position.copy(ae.target).add(le);
+                    }
+                    if (progress >= 1) {
+                        camPan = null;
+                    }
+                } else if (trackedTargetPerson) {
+                    let follow = Math.min(1, dt * 6.0);
+                    ae.target.x += (trackedTargetPerson.x - ae.target.x) * follow;
+                    ae.target.z += (trackedTargetPerson.z - ae.target.z) * follow;
+                    ie.position.copy(ae.target).add(le);
+                }
                 ue();
                 envUpdate(dt, sa);
                 /* animated textures */
@@ -5090,6 +5445,69 @@ if (ca < 0) {
       ie.position.setFromSpherical(new e.Spherical(re, .96, .5)).add(ae.target);
       ae.update();
     },
+    focusEmployee(employeeId?: string, zoomIn = true) {
+      let target = findPersonInRoster(employeeId);
+      if (!target && $) {
+        target = $;
+      }
+      if (!target) {
+        target = STAFF.find(p => p.role === `ceo`) || STAFF[0];
+      }
+      if (target) {
+        $ = target;
+        callbacks.onSelectPerson && callbacks.onSelectPerson(getPersonInfo(target));
+        let curDist = le.length();
+        let targetDist = (zoomIn && curDist > 75) ? 68 : curDist;
+        camPan = {
+          startX: ae.target.x,
+          startZ: ae.target.z,
+          startDist: curDist,
+          targetDist: targetDist,
+          person: target,
+          targetX: target.x,
+          targetZ: target.z,
+          t: 0,
+          dur: 0.85
+        };
+      }
+    },
+    setCameraTrackTarget(employeeId: string | null) {
+      if (!employeeId) {
+        trackedTargetPerson = null;
+        return;
+      }
+      let target = findPersonInRoster(employeeId);
+      if (!target && $) target = $;
+      trackedTargetPerson = target || null;
+    },
+    showSpeechBubble(employeeId: string, text: string, dur = 8.0) {
+      let p = findPersonInRoster(employeeId);
+      if (!p && $) p = $;
+      if (!p) p = STAFF.find(person => person.role === `ceo`);
+      if (p && p.sayText) {
+        p.sayText(text, dur);
+      } else if (p && p.say) {
+        p.say(text, dur);
+      }
+    },
+    getPersonScreenCoords(employeeId?: string) {
+      let p = employeeId ? findPersonInRoster(employeeId) : $;
+      if (!p) return null;
+      let headY = (p.anim === `sit` || p.anim === `sitsip` || p.anim === `sittype`) ? 1.4 : 1.75;
+      let v = new e.Vector3(p.x, p.group.position.y + headY, p.z);
+      v.project(ie);
+      let rect = canvas.getBoundingClientRect();
+      let x = (v.x * 0.5 + 0.5) * rect.width;
+      let y = (-v.y * 0.5 + 0.5) * rect.height;
+      return {
+        x,
+        y,
+        visible: p.group.visible && v.z < 1,
+        name: p.name,
+        role: p.officeRoleTitle || ROLES[p.role] || p.role,
+        employeeId: p.formativeEmployeeId
+      };
+    },
     resize(w?: number, h?: number) {
       Se(w, h);
     },
@@ -5105,6 +5523,7 @@ if (ca < 0) {
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointermove', onPointerMove);
       try {
+        ae.dispose();
         w.dispose();
         de.dispose();
         fe.dispose();

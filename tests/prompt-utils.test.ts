@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanPromptForDisplay, getConversationCleanTitle } from '../src/utils/promptUtils';
+import { cleanPromptForDisplay, getConversationCleanTitle, extractConciseSpeech } from '../src/utils/promptUtils';
 
 describe('Prompt Display Utilities', () => {
   it('extracts clean user question from coordinator prompt with task context', () => {
@@ -25,5 +25,20 @@ User's question: hello`;
     const title = getConversationCleanTitle(long, 50);
     expect(title.length).toBe(50);
     expect(title.endsWith('…')).toBe(true);
+  });
+
+  it('extracts concise speech under 120 chars without clipping', () => {
+    const verbose = `I have finished reviewing the architecture specs. Everything looks solid and conforms to standard guidelines. Let me know if you would like me to begin refactoring now.`;
+    const concise = extractConciseSpeech(verbose, 120);
+    expect(concise.length).toBeLessThanOrEqual(120);
+    expect(concise).toContain('Everything looks solid');
+  });
+
+  it('strips markdown and headers from bubble speech', () => {
+    const markdown = `### Status Update\nI created **README.md** with complete setup instructions.\n- Built tests\n- Cleaned types`;
+    const concise = extractConciseSpeech(markdown, 120);
+    expect(concise.startsWith('###')).toBe(false);
+    expect(concise).toContain('README.md');
+    expect(concise.length).toBeLessThanOrEqual(120);
   });
 });

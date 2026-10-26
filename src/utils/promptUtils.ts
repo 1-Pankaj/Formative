@@ -29,3 +29,31 @@ export function getConversationCleanTitle(title: string, maxLength: number = 72)
   if (!clean) return 'New conversation';
   return clean.length > maxLength ? `${clean.slice(0, maxLength - 1)}…` : clean;
 }
+
+/**
+ * Formats and clamps agent responses to fit inside in-office 3D speech bubbles without clipping.
+ * Strips codeblocks, markdown headers, and clamps to 1-2 short sentences (max 120 chars).
+ */
+export function extractConciseSpeech(text: string, maxChars: number = 120): string {
+  if (!text || typeof text !== 'string') return '';
+  let clean = text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#+\s+/gm, '')
+    .replace(/^[-*+]\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\r?\n+/g, ' ')
+    .trim();
+
+  const sentenceMatches = clean.match(/.*?[.!?](?=\s+|$)/g);
+  if (sentenceMatches && sentenceMatches.length > 0) {
+    clean = sentenceMatches.slice(0, 2).join(' ').trim();
+  }
+
+  if (clean.length > maxChars) {
+    clean = clean.slice(0, maxChars - 3).trim() + '...';
+  }
+
+  return clean || text.slice(0, maxChars);
+}

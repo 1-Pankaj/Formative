@@ -3,7 +3,18 @@ import type { ArchitectureMap } from './architectureMap';
 
 export type ProjectType = 'web' | 'mobile' | 'backend' | 'ai-system' | 'general' | 'roblox' | 'ai-tool' | 'realtime' | 'data-pipeline';
 
-export type SkillDepartment = 'frontend' | 'backend' | 'qa' | 'database';
+export type SkillDepartment =
+  | 'frontend'
+  | 'backend'
+  | 'qa'
+  | 'database'
+  | 'mobile'
+  | 'devops'
+  | 'design'
+  | 'security'
+  | 'ai'
+  | 'docs'
+  | 'analytics';
 
 export type OfficeDepartment = SkillDepartment | 'general';
 export type OfficeHairStyle = 'short' | 'curly' | 'bald' | 'buzz' | 'ponytail' | 'messy' | 'long' | 'bun' | 'cap';

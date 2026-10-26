@@ -23,6 +23,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { ProjectHomeView } from './components/ProjectHomeView';
 import { AgentChatView, type StartChatRun } from './components/AgentChatView';
+import { AgentRunDock } from './components/chat/AgentRunDock';
 import { ArchitectureMapView } from './components/ArchitectureMapView';
 import { OnboardingModal } from './components/OnboardingModal';
 import { TelemetryConnectView } from './components/TelemetryConnectView';
@@ -86,6 +87,30 @@ declare global {
       getAgentProviderStatuses: () => Promise<{ success: boolean; providers: AgentProviderStatus[]; error?: string }>;
       startAgentRun: (request: StartAgentRunRequest) => Promise<{ success: boolean; runId?: string; providerSessionId?: string; error?: string }>;
       stopAgentRun: (request: { projectId: string; runId: string }) => Promise<{ success: boolean; stopped?: boolean; error?: string }>;
+      generateOfficeDialogue?: (request: {
+        employee: {
+          id: string;
+          name: string;
+          roleTitle: string;
+          department?: string;
+          skills?: string[];
+          assignedTasks?: string[];
+          activeRun?: {
+            providerId: string;
+            status: string;
+            taskTitle?: string;
+          } | null;
+        };
+        project: {
+          name: string;
+          description?: string;
+          type?: string;
+          components?: string[];
+          activeTasks?: string[];
+        };
+        history?: Array<{ sender: 'user' | 'agent'; text: string }>;
+        prompt: string;
+      }) => Promise<{ success: boolean; text?: string; error?: string; employeeId?: string; employeeName?: string }>;
       onAgentRunEvent: (cb: (payload: AgentRunStreamEvent) => void) => () => void;
     };
   }
@@ -101,7 +126,20 @@ interface ToastState {
   action?: ToastAction;
 }
 
-const createLocalId = (prefix: string) => `${prefix}-${globalThis.crypto.randomUUID()}`;
+const createLocalId = (prefix: string) => {
+  let rand = '';
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    try {
+      rand = globalThis.crypto.randomUUID();
+    } catch {
+      // fallback
+    }
+  }
+  if (!rand) {
+    rand = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+  return `${prefix}-${rand}`;
+};
 
 export const App: React.FC = () => {
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -153,6 +191,9 @@ export const App: React.FC = () => {
   });
   const [canvasView, setCanvasView] = useState<'canvas' | 'architecture-map'>('canvas');
   const [requestedAgentTaskId, setRequestedAgentTaskId] = useState<string | null>(null);
+  const [requestedAgentConversationId, setRequestedAgentConversationId] = useState<string | null>(null);
+
+
 
   const [flowLayout, setFlowLayout] = useState<FlowLayout>('tree');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -199,6 +240,20 @@ export const App: React.FC = () => {
     () => (activeProjectId ? projects.find((p) => p.id === activeProjectId) || null : null),
     [projects, activeProjectId]
   );
+
+  const activeRuns = useMemo(() => {
+    return (activeProject?.agentRuns || []).filter((run) =>
+      ['queued', 'starting', 'running', 'waiting_for_approval', 'stopping'].includes(run.status)
+    );
+  }, [activeProject?.agentRuns]);
+
+  const activeProviderName = useMemo(() => {
+    if (!activeRuns.length) return '';
+    const firstProvider = activeRuns[0].providerId;
+    if (firstProvider === 'codex-cli') return 'Codex';
+    if (firstProvider === 'claude-code') return 'Claude';
+    return 'Agent';
+  }, [activeRuns]);
 
   useEffect(() => {
     setCanvasView('canvas');
@@ -1343,6 +1398,8 @@ export const App: React.FC = () => {
         onOpenSettings={() => setIsSettingsOpen(true)}
         isTranscriptWatching={isTranscriptWatching}
         enabledEmployeeCount={enabledEmployeeCount}
+        activeRunsCount={activeRuns.length}
+        activeProviderName={activeProviderName}
         onOpenTeamSetup={() => {
           setIsTeamSetupRequested(true);
           void requestViewMode('operations-floor');
@@ -1514,6 +1571,8 @@ export const App: React.FC = () => {
               onStopRun={handleStopAgentRun}
               initialTaskId={requestedAgentTaskId}
               onInitialTaskHandled={() => setRequestedAgentTaskId(null)}
+              initialConversationId={requestedAgentConversationId}
+              onInitialConversationHandled={() => setRequestedAgentConversationId(null)}
             />
           ) : viewMode === 'issues' ? (
             <IssuesView 
@@ -1559,6 +1618,11 @@ export const App: React.FC = () => {
               onStopRun={handleStopAgentRun}
               openTeamSetupRequest={isTeamSetupRequested}
               onTeamSetupRequestHandled={() => setIsTeamSetupRequested(false)}
+              onOpenAgentChat={(conversationId, taskId) => {
+                if (conversationId) setRequestedAgentConversationId(conversationId);
+                if (taskId) setRequestedAgentTaskId(taskId);
+                void requestViewMode('agent-chat');
+              }}
             />
           ) : viewMode === 'agent-flow' && !activeSession ? (
             <TelemetryConnectView
@@ -1732,6 +1796,20 @@ export const App: React.FC = () => {
           onDeleteProject={handleDeleteProject}
           onLoadTemplate={handleLoadTemplate}
         />
+
+        {activeProject && viewMode !== 'agent-chat' && (
+          <AgentRunDock
+            runs={activeRuns}
+            project={activeProject}
+            theme={theme}
+            onOpenRun={(conversationId, taskId) => {
+              if (conversationId) setRequestedAgentConversationId(conversationId);
+              if (taskId) setRequestedAgentTaskId(taskId);
+              void requestViewMode('agent-chat');
+            }}
+            onStopRun={handleStopAgentRun}
+          />
+        )}
 
         {/* Desktop Application Bottom Status Bar */}
         <footer className={`h-7 border-t px-2.5 xl:px-4 flex items-center justify-between gap-3 text-[10px] xl:text-xs font-mono select-none z-30 shrink-0 min-w-0 ${

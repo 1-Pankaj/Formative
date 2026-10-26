@@ -28,5 +28,7 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Build the renderer
+      - name: Build renderer and verify types
         run: npm run build
+      - name: Run test suite
+        run: npm test

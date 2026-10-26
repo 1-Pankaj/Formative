@@ -25,13 +25,19 @@ To run the Windows desktop app:
 npm run desktop
 ```
 
+To run the automated test suite:
+
+```bash
+npm test
+```
+
 To run the TypeScript and production renderer build check:
 
 ```bash
 npm run build
 ```
 
-The project does not currently define a unit or end-to-end test script. Do not describe a build as proof that native Electron behavior, provider access, or a complete user workflow has been tested. Include the checks you actually performed in your pull request.
+Before submitting a pull request, verify that both `npm test` and `npm run build` pass cleanly without errors.
 
 ## Pull requests
 

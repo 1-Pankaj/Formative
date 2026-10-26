@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('formativeApi', {
   getAgentProviderStatuses: () => ipcRenderer.invoke('get-agent-provider-statuses'),
   startAgentRun: (request) => ipcRenderer.invoke('start-agent-run', request),
   stopAgentRun: (request) => ipcRenderer.invoke('stop-agent-run', request),
+  generateOfficeDialogue: (request) => ipcRenderer.invoke('generate-office-dialogue', request),
   onLiveTranscriptUpdate: (callback) => {
     const handler = (event, steps) => callback(steps);
     ipcRenderer.on('live-transcript-update', handler);

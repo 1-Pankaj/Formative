@@ -18,6 +18,8 @@ interface AppNavigationProps {
   isTranscriptWatching?: boolean;
   enabledEmployeeCount?: number;
   onOpenTeamSetup?: () => void;
+  activeRunsCount?: number;
+  activeProviderName?: string;
 }
 
 export const AppNavigation: React.FC<AppNavigationProps> = ({
@@ -35,6 +37,8 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
   isTranscriptWatching = false,
   enabledEmployeeCount = 0,
   onOpenTeamSetup,
+  activeRunsCount = 0,
+  activeProviderName = '',
 }) => {
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
   const isDark = theme !== 'light';
@@ -294,7 +298,7 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Open this project overview'}
                 aria-current={viewMode === 'project-home' ? 'page' : undefined}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'project-home'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-700 hover:text-black hover:bg-zinc-100'
@@ -326,13 +330,22 @@ export const AppNavigation: React.FC<AppNavigationProps> = ({
                 disabled={!activeProject}
                 title={!activeProject ? 'Choose a project first' : 'Start or continue a project agent conversation'}
                 aria-current={viewMode === 'agent-chat' ? 'page' : undefined}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                   viewMode === 'agent-chat'
                     ? isDark ? 'bg-[#27272a] text-white font-semibold' : 'bg-zinc-200 text-black font-semibold'
                     : isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181b]' : 'text-zinc-700 hover:text-black hover:bg-zinc-100'
                 }`}
               >
                 <span>Agent chat</span>
+                {activeRunsCount > 0 && (
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span>{activeProviderName || 'Active'} ({activeRunsCount})</span>
+                  </span>
+                )}
               </button>
 
               <button

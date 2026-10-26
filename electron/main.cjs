@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 const { normalizeAgentHistory } = require('./agent-run-history.cjs');
 const { createAgentRunManager } = require('./agent-run-manager.cjs');
 const { readArchitectureSources } = require('./architecture-source-reader.cjs');
+const { generateOfficeDialogue, hasLocalOfficeLlm, disposeAll: disposeLocalLlm } = require('./local-office-llm.cjs');
 
 let mainWindow = null;
 let activeWatcher = null;
@@ -273,9 +274,18 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   agentRunManager.stopAll();
+  void disposeLocalLlm();
 });
 
 // --- IPC HANDLERS ---
+
+handleAppIpc('generate-office-dialogue', async (event, request) => {
+  return generateOfficeDialogue(request);
+});
+
+handleAppIpc('has-local-office-llm', async () => {
+  return { available: hasLocalOfficeLlm() };
+});
 
 handleAppIpc('get-agent-provider-statuses', async () => {
   try {

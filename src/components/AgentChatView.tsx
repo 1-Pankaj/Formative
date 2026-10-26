@@ -51,6 +51,8 @@ interface AgentChatViewProps {
   onStopRun: (runId: string) => Promise<void>;
   initialTaskId?: string | null;
   onInitialTaskHandled?: () => void;
+  initialConversationId?: string | null;
+  onInitialConversationHandled?: () => void;
 }
 
 const PROVIDER_ORDER: AgentProviderId[] = ['codex-cli', 'claude-code', 'antigravity'];
@@ -147,6 +149,8 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
   onStopRun,
   initialTaskId = null,
   onInitialTaskHandled,
+  initialConversationId = null,
+  onInitialConversationHandled,
 }) => {
   const dark = theme !== 'light';
   const conversations = useMemo(
@@ -180,6 +184,12 @@ export const AgentChatView: React.FC<AgentChatViewProps> = ({
     const conversationEmployee = assignableEmployees.find((employee) => employee.id === activeConversation?.employeeId);
     setEmployeeId(conversationEmployee?.id || officeTeam.ceo.id);
   }, [activeConversation?.id, assignableEmployees, officeTeam.ceo.id]);
+
+  useEffect(() => {
+    if (!initialConversationId) return;
+    setConversationId(initialConversationId);
+    onInitialConversationHandled?.();
+  }, [initialConversationId, onInitialConversationHandled]);
 
   useEffect(() => {
     if (!initialTaskId) return;

@@ -7,8 +7,10 @@
 **A desktop workspace for project diagrams, tasks, and local agent conversations.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-black.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Desktop-black.svg?style=flat-square)](#quick-start)
-[![Built With](https://img.shields.io/badge/Stack-React%2019%20%7C%20TypeScript%20%7C%20Electron%2035-black.svg?style=flat-square)](#tech-stack)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20Desktop-black.svg?style=flat-square)](#download)
+[![Build](https://img.shields.io/github/actions/workflow/status/1-Pankaj/Formative/build.yml?branch=master&style=flat-square&label=Build)](https://github.com/1-Pankaj/Formative/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/1-Pankaj/Formative?style=flat-square&color=black)](https://github.com/1-Pankaj/Formative/releases)
+[![Stack](https://img.shields.io/badge/Stack-React%2019%20%7C%20TypeScript%20%7C%20Electron%2035-black.svg?style=flat-square)](#tech-stack)
 
 </div>
 
@@ -20,6 +22,7 @@ Formative brings project work, architecture diagrams, and supported local agent 
 > Formative is in active development. The sections below describe what works today and what is still planned.
 
 <p align="center">
+  <a href="#download">Download</a> ·
   <a href="#what-works-today">Features</a> ·
   <a href="#agent-connections">Agent connections</a> ·
   <a href="#privacy-and-provider-costs">Privacy</a> ·
@@ -27,6 +30,15 @@ Formative brings project work, architecture diagrams, and supported local agent 
   <a href="#contributing">Contributing</a> ·
   <a href="#tech-stack">Tech stack</a>
 </p>
+
+## Download
+
+Pre-compiled Windows releases are available on the [Releases page](https://github.com/1-Pankaj/Formative/releases):
+
+- **Setup Installer (`Formative-Setup-1.0.0.exe`)**: Standard Windows installer with desktop shortcuts, start menu integration, and uninstaller.
+- **Portable Executable (`Formative-Portable-1.0.0.exe`)**: Single-file standalone executable that runs without installation.
+
+Both packages have the local offline LLM runtime bundled inside, requiring no external setup or model downloads.
 
 ## What works today
 
@@ -133,11 +145,11 @@ The browser preview is for interface development. It cannot scan local folders o
 
 ### Build Windows packages
 
-These commands create an unpacked review build or a portable executable. A standard Windows installer is planned for the final delivery phase, after product work and release verification.
-
 ```bash
-npm run dist:dir
-npm run dist:portable
+npm run dist:installer   # Builds the NSIS setup installer (.exe)
+npm run dist:portable    # Builds the standalone portable executable (.exe)
+npm run dist             # Builds both packages into build-release/
+npm run dist:dir         # Creates an unpacked review directory
 ```
 
 ## Canvas controls

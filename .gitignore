@@ -35,6 +35,11 @@ win-unpacked/
 *.7z
 *.msi
 
+# Large Language Model Weights (Bundled directly into production executables via electron-builder)
+*.gguf
+llm/*.gguf
+LLM/*.gguf
+
 # Environment Variables & Secrets (CRITICAL)
 .env
 .env.*
@@ -57,6 +62,7 @@ munder-difflin-main/
 paperclip-master/
 paperclip-master.zip
 archive/
+formative-atelier/
 
 # Local standalone office prototype (kept outside the shipped app)
 /[Nn]ew[Oo]ffice.html
