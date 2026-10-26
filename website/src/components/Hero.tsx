@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FadingVideo } from './FadingVideo';
+import { BackgroundRipple } from './BackgroundRipple';
 import { BlurText } from './BlurText';
 import { Icons } from './Icons';
 
@@ -12,16 +12,12 @@ const motionProps = (delay: number) => ({
 
 export const Hero: React.FC = () => {
   return (
-    <section className="relative h-screen overflow-hidden bg-black flex flex-col justify-between">
-      {/* Background Cinematic Video with smooth fade */}
-      <FadingVideo
-        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260619_191346_9d19d66e-86a4-47f7-8dc6-712c1788c3b2.mp4"
-        className="absolute left-1/2 top-0 -translate-x-1/2 object-cover object-top z-0 pointer-events-none"
-        style={{ width: '120%', height: '120%' }}
-      />
+    <section className="relative min-h-screen overflow-hidden bg-black flex flex-col justify-between">
+      {/* Aceternity Background Ripple Effect replacing background video */}
+      <BackgroundRipple />
 
-      {/* Atmospheric dark gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 z-0 pointer-events-none" />
+      {/* Atmospheric Top Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-brand/15 via-white/5 to-transparent blur-3xl pointer-events-none" />
 
       {/* Fixed Liquid Glass Navbar */}
       <header className="fixed top-4 left-0 right-0 z-50 flex items-center justify-between px-8 lg:px-16 pointer-events-none">
@@ -35,16 +31,16 @@ export const Hero: React.FC = () => {
 
         {/* Center: liquid-glass pill with navigation links */}
         <nav className="hidden md:flex items-center gap-1 liquid-glass rounded-full px-1.5 py-1.5 pointer-events-auto">
-          <a href="#capabilities" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+          <a href="#features" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
             Capabilities
           </a>
-          <a href="#architecture" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+          <a href="#features" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
             Architecture
           </a>
-          <a href="#llm" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+          <a href="#features" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
             Offline LLM
           </a>
-          <a href="#agents" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+          <a href="#features" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
             Agent CLI
           </a>
           <a
@@ -71,7 +67,7 @@ export const Hero: React.FC = () => {
       </header>
 
       {/* Main Centered Hero Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center pt-24 px-4 text-center max-w-5xl mx-auto">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center pt-28 pb-12 px-4 text-center max-w-5xl mx-auto">
         {/* Badge */}
         <motion.div {...motionProps(0.4)} className="liquid-glass rounded-full px-3 py-1 flex items-center gap-2">
           <span className="bg-white text-black text-[10px] font-semibold font-body px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -86,13 +82,13 @@ export const Hero: React.FC = () => {
         <div className="mt-6 max-w-4xl">
           <BlurText
             text="Autonomous Engineering Workspace Built For Your Machine"
-            className="text-5xl md:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.85] tracking-[-4px]"
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.85] tracking-[-4px]"
           />
         </div>
 
         {/* Subtext */}
         <motion.p {...motionProps(0.8)} className="mt-4 text-sm md:text-base text-white/90 max-w-2xl font-body font-light leading-snug">
-          A desktop environment unifying syntax-tree architecture diagrams, offline SmolLM2 neural intelligence, and supervised Claude Code and Codex CLI execution. Precise typography, cinematic motion, and code you can be proud of.
+          A desktop environment unifying syntax-tree architecture diagrams, offline SmolLM2 neural intelligence, and supervised Claude Code and Codex CLI execution. Precise typography, liquid glass elements, and zero cloud telemetry.
         </motion.p>
 
         {/* CTA buttons */}
@@ -101,18 +97,18 @@ export const Hero: React.FC = () => {
             href="https://github.com/1-Pankaj/Formative/releases/latest"
             target="_blank"
             rel="noreferrer"
-            className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-body font-medium text-white flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="liquid-glass-strong rounded-full px-6 py-3 text-sm font-body font-medium text-white flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <span>Download for Windows</span>
             <Icons.ArrowUpRight size={16} />
           </a>
 
           <a
-            href="#capabilities"
+            href="#features"
             className="flex items-center gap-2 text-sm font-body font-light text-white/90 hover:text-white transition-colors"
           >
             <Icons.Play size={14} />
-            <span>Explore Capabilities</span>
+            <span>Explore Architecture</span>
           </a>
         </motion.div>
 
@@ -143,7 +139,7 @@ export const Hero: React.FC = () => {
       {/* Bottom Trust & Platform Bar */}
       <motion.div {...motionProps(1.4)} className="relative z-10 flex flex-col items-center gap-4 pb-8 px-4">
         <div className="liquid-glass rounded-full px-4 py-1 text-xs text-white/80 font-body font-light">
-          Trusted by founders, operators, and systems architects worldwide
+          Engineered for local-first software architects, security teams, and agent operators
         </div>
 
         <div className="flex items-center gap-8 sm:gap-12 md:gap-16 flex-wrap justify-center">
