@@ -10,6 +10,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20Desktop-black.svg?style=flat-square)](#download)
 [![Build](https://img.shields.io/github/actions/workflow/status/1-Pankaj/Formative/build.yml?branch=master&style=flat-square&label=Build)](https://github.com/1-Pankaj/Formative/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/1-Pankaj/Formative?style=flat-square&color=black)](https://github.com/1-Pankaj/Formative/releases)
+[![Status: Public Beta](https://img.shields.io/badge/Status-Public%20Beta-black.svg?style=flat-square)](https://github.com/1-Pankaj/Formative/releases)
 [![Stack](https://img.shields.io/badge/Stack-React%2019%20%7C%20TypeScript%20%7C%20Electron%2035-black.svg?style=flat-square)](#tech-stack)
 
 </div>
