@@ -21,6 +21,16 @@ describe('Local Office LLM Service', () => {
     expect(result.error).toContain('required');
   });
 
+  it.runIf(!modelAvailable)('returns descriptive error when formativellm.gguf is missing', async () => {
+    const result = await generateOfficeDialogue({
+      project: { name: 'TestApp' },
+      employee: { id: 'emp-ceo', name: 'Rex', roleTitle: 'Chief Executive Agent' },
+      prompt: 'hello Rex',
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('formativellm.gguf');
+  });
+
   it.runIf(modelAvailable)('detects formativellm.gguf in the project', () => {
     expect(hasLocalOfficeLlm()).toBe(true);
   });

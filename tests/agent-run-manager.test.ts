@@ -45,13 +45,20 @@ describe('Agent Run Manager Utilities', () => {
 
   it('finds executable binaries on PATH', () => {
     if (process.platform === 'win32') {
-      const codexPath = findExecutable('codex');
-      expect(codexPath).toBeDefined();
-      expect(typeof codexPath).toBe('string');
+      // cmd or node is guaranteed to be on PATH on any Windows machine/runner
+      const nodePath = findExecutable('node');
+      expect(nodePath).toBeDefined();
+      expect(typeof nodePath).toBe('string');
 
-      const claudePath = findExecutable('claude');
-      expect(claudePath).toBeDefined();
-      expect(typeof claudePath).toBe('string');
+      // Returns null for non-existent binaries
+      const nonExistent = findExecutable('non_existent_binary_xyz_123');
+      expect(nonExistent).toBeNull();
+
+      // If codex is installed, it returns a string path
+      const codexPath = findExecutable('codex');
+      if (codexPath) {
+        expect(typeof codexPath).toBe('string');
+      }
     }
   });
 
@@ -68,7 +75,14 @@ describe('Agent Run Manager Utilities', () => {
     const codexStatus = statuses.find((s: any) => s.providerId === 'codex-cli');
     expect(codexStatus).toBeDefined();
     expect(codexStatus.displayName).toBe('Codex');
-    expect(codexStatus.state).toBe('installed');
-    expect(codexStatus.version).toBeDefined();
+    expect(['installed', 'missing', 'unsupported']).toContain(codexStatus.state);
+
+    if (codexStatus.state === 'installed') {
+      expect(codexStatus.version).toBeDefined();
+      expect(codexStatus.capabilities.canStartRun).toBe(true);
+    } else {
+      expect(codexStatus.capabilities.canStartRun).toBe(false);
+      expect(codexStatus.explanation).toContain('Install');
+    }
   });
 });

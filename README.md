@@ -116,7 +116,7 @@ The previous office tile maps and third-party tile artwork have been removed. Th
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
+- [Node.js](https://nodejs.org/) (v22 LTS or higher recommended, tested on Node 24 and 26)
 - npm
 
 ### Install
