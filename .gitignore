@@ -11,6 +11,7 @@ node_modules/
 
 # Production & Build Outputs
 dist/
+dist-website/
 dist-ssr/
 /build/
 build-release/

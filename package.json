@@ -6,7 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:website": "vite -c vite.website.config.ts",
     "build": "tsc && vite build",
+    "build:website": "vite build -c vite.website.config.ts",
+    "preview:website": "vite preview -c vite.website.config.ts",
     "test": "vitest run",
     "start": "electron .",
     "desktop": "tsc && vite build && electron .",
