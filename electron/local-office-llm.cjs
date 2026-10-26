@@ -9,9 +9,13 @@ let isGenerating = false;
 let idleTimer = null;
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes idle cleanup
 let pendingGenerationQueue = Promise.resolve();
+let userDataPath = null;
 
 function findGgufModelPath() {
   const candidates = [
+    ...(userDataPath ? [path.resolve(userDataPath, 'FormativeData/llm/formativellm.gguf')] : []),
+    path.resolve(process.cwd(), 'LLM/formativellm.gguf'),
+    path.resolve(__dirname, '../LLM/formativellm.gguf'),
     path.resolve(process.cwd(), 'llm/formativellm.gguf'),
     path.resolve(__dirname, '../llm/formativellm.gguf'),
     path.resolve(__dirname, 'llm/formativellm.gguf'),
@@ -83,211 +87,177 @@ async function initLlm() {
   }
 
   if (!contextInstance) {
-    contextInstance = await modelInstance.createContext({ contextSize: 1024 });
+    contextInstance = await modelInstance.createContext({ contextSize: 2048 });
   }
 
   resetIdleTimer();
   return true;
 }
 
-function sanitizeDialogue(raw, employeeName, projectName = 'the project', lastAgentMessage = null, userPrompt = '') {
-  if (!raw || typeof raw !== 'string') return `Everything is moving along smoothly on ${projectName}.`;
-  let text = raw.trim();
-
-  // Strip enclosing quotes if model wraps in quotes
-  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
-    text = text.slice(1, -1).trim();
-  }
-
-  // Strip leading names/labels e.g. "Rex: " or "Elena: "
-  const safeNameEscaped = (employeeName || 'Rex').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const prefixRegex = new RegExp(`^(${safeNameEscaped}|Teammate|Assistant|User|Boss|Human):\\s*`, 'i');
-  text = text.replace(prefixRegex, '');
-  text = text.replace(/^[#*->]+\s*/gm, '');
-  text = text.replace(/```[\s\S]*?```/g, '');
-  text = text.replace(/`([^`]+)`/g, '$1');
-
-  // Strip any hallucinated multi-turn script continuation e.g. "\nBoss: ... Rex: ..." or inline "Boss: ..."
-  text = text.split(/(?:\r?\n|\s+)(?:Boss|User|Human|Assistant|Teammate|\b(?:${safeNameEscaped})\b):\s*/i)[0].trim();
-
-  // Replace any hallucinated "Alex" with "boss" or strip it
-  text = text.replace(/\bAlex\b/gi, 'boss');
-
-  // Strip AI self-disclaimers
-  text = text.replace(/^As an AI[^.]*\./i, `On ${projectName}, we're keeping our architecture clean and modular.`);
-  text = text.replace(/^I('m| am) an AI[^.]*\./i, `On ${projectName}, we're keeping our architecture clean and modular.`);
-  text = text.replace(/I don't have (?:real-time|access)[^.]*\./i, `Everything on ${projectName} is progressing steadily.`);
-
-  // Strip robotic standby or task-taking phrases if model hallucinates them
-  text = text
-    .replace(/^I('m| am) on standby[^.]*\./i, 'Everything is running smoothly on my end.')
-    .replace(/^I('ll| will) take care of the README[^.]*\./i, `Glad to chat about ${projectName}!`)
-    .trim();
-
-  // Strip trailing bot questions (e.g. "What's your question?", "What's on your mind?", etc.)
-  const botQuestionPattern = /(?:[,\s.-]+(?:what(?:'s|\s+is|\s+was)\s+(?:your|the)\s+question(?:\s+again|\s+for\s+me)?\??|what(?:'s|\s+is)\s+on\s+your\s+mind\??|how\s+(?:can|may)\s+i\s+(?:help|assist)(?:\s+you)?(?:\s+today)?\??|how\s+are\s+you(?:\s+doing)?\??|what\s+would\s+you\s+like\s+to\s+(?:know|discuss|work\s+on)\??|do\s+you\s+have\s+any\s+questions(?:\s+for\s+me)?\??|any\s+questions(?:\s+for\s+me)?\??|is\s+there\s+anything\s+else(?:\s+i\s+can\s+help\s+with)?\??|can\s+you\s+please\s+give\s+it\s+a\s+try\??))+\s*$/i;
-  text = text.replace(botQuestionPattern, '').trim();
-
-  // Strip anything after double newline
-  text = text.split(/\r?\n\r?\n/)[0].trim();
-
-  // Extract clean complete sentences (up to 140 chars) without word clipping
-  const matches = text.match(/[^.!?]+[.!?]/g);
-  if (matches && matches.length > 0) {
-    let result = '';
-    for (const s of matches) {
-      const candidate = result ? `${result} ${s.trim()}` : s.trim();
-      if (candidate.length <= 140) {
-        result = candidate;
-      } else {
-        break;
-      }
-    }
-    if (result) text = result;
-  }
-
-  // Strip bot questions again in case sentence extraction kept one
-  text = text.replace(botQuestionPattern, '').trim();
-
-  // Fallback if no punctuation or single long sentence
-  if (text.length > 130) {
-    const lastSpace = text.slice(0, 125).lastIndexOf(' ');
-    text = (lastSpace > 20 ? text.slice(0, lastSpace) : text.slice(0, 125)).trim() + '.';
-  }
-
-  // Ensure trailing punctuation
-  if (text && !/[.!?]$/.test(text)) {
-    text += '.';
-  }
-
-  // META-CONVERSATION / ANTI-BOT REPETITION SAFEGUARD:
-  // If the user is calling out repeating questions, or asking why the bot keeps asking questions:
-  if (
-    /(?:why|stop|keep|again)\s+(?:are\s+you\s+)?(?:asking|repeating|saying).*(?:question|repeat|same)/i.test(userPrompt) ||
-    /(?:why\s+repeat|bro\s+why|what\s+is\s+with\s+the\s+questions)/i.test(userPrompt)
-  ) {
-    return `Haha, my bad! Brain freeze on my end. What should we tackle next on ${projectName}?`;
-  }
-
-  // If asked for project updates and model generated generic bot cop-out:
-  if (/project\s+updates|status\s+update/i.test(userPrompt)) {
-    if (/^I('d| would) be happy to help explain/i.test(text) || /^I'm glad you asked\.\s*$/i.test(text) || text.length < 15) {
-      return `We're keeping ${projectName}'s core modules clean and testing our latest changes. Everything is progressing steadily.`;
-    }
-  }
-
-  // ANTI-REPETITION SAFEGUARD:
-  // Trigger ONLY if the new response is an actual verbatim repeat of the previous message
-  if (lastAgentMessage && typeof lastAgentMessage === 'string') {
-    const cleanLast = lastAgentMessage.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const cleanCurrent = text.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    const isExactMatch = cleanLast.length > 8 && cleanCurrent === cleanLast;
-    const isVeryClose = cleanLast.length > 15 && Math.abs(cleanCurrent.length - cleanLast.length) <= 4 && (
-      cleanCurrent.startsWith(cleanLast.slice(0, 18)) || cleanLast.startsWith(cleanCurrent.slice(0, 18))
-    );
-
-    if (isExactMatch || isVeryClose) {
-      if (/repeat|again|same|stop|why/i.test(userPrompt)) {
-        return `Haha, my bad! Brain freeze on my end. What should we tackle next on ${projectName}?`;
-      }
-      return `Everything on ${projectName} is moving forward steadily. Reviewing our latest modules now.`;
-    }
-  }
-
-  return text || `Hey! Things are moving along nicely with ${projectName}.`;
+function normalizeForComparison(value) {
+  return String(value || '').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 }
 
-function buildCharacterSystemPrompt(employee, project) {
-  const employeeName = employee?.name || 'Rex';
-  const roleTitle = employee?.roleTitle || 'Chief Executive Agent';
-  const department = employee?.department || 'general';
-  const projectName = project?.name || 'Current Project';
-  const projectDesc = project?.description ? ` (${project.description})` : '';
-  const componentsList = Array.isArray(project?.components) && project.components.length > 0
-    ? project.components.slice(0, 5).join(', ')
-    : 'backend services, cms, and client UI';
-
-  const isCeo = employee?.id === 'emp-ceo' || department === 'ceo' || roleTitle.toLowerCase().includes('ceo') || roleTitle.toLowerCase().includes('coordinator');
-  const isReception = department === 'reception' || roleTitle.toLowerCase().includes('reception');
-  const isSysadmin = department === 'sysadmin' || roleTitle.toLowerCase().includes('system admin');
-  const isPresenter = department === 'presenter' || roleTitle.toLowerCase().includes('presenter') || roleTitle.toLowerCase().includes('solutions architect');
-  const isStaffArchitect = department === 'techlead' || roleTitle.toLowerCase().includes('staff architect');
-  const isMobile = department === 'mobile' || roleTitle.toLowerCase().includes('mobile developer');
-  const isSre = department === 'sre' || roleTitle.toLowerCase().includes('site reliability');
-  const isOfficeMgr = department === 'officemgr' || roleTitle.toLowerCase().includes('office operations');
-  const isCourier = department === 'courier' || roleTitle.toLowerCase().includes('courier');
-  const isNeighbour = department === 'visitor' || roleTitle.toLowerCase().includes('neighbor') || roleTitle.toLowerCase().includes('resident') || roleTitle.toLowerCase().includes('regular');
-
-  let personaContext = `You are a talented ${roleTitle} working on "${projectName}". You take pride in your engineering craft and love collaborating with your teammates.`;
-  let userRelation = 'your coworker / team lead';
-  let addressUser = 'boss';
-
-  if (isCeo) {
-    personaContext = `As Founder & Coordinator, you orchestrate high-level technical vision and architecture for "${projectName}". You think strategically about system modularity, architecture components (${componentsList}), and keeping everyone aligned.`;
-  } else if (isReception) {
-    personaContext = `As Receptionist at the front desk, you welcome guests, handle office logistics, packages, and keep the lobby running smoothly.`;
-  } else if (isSysadmin) {
-    personaContext = `As System Administrator in the server room, you maintain the server racks, Linux machines, cooling, network switches, and terminal hardware.`;
-  } else if (isPresenter) {
-    personaContext = `As Solutions Architect, you review architecture diagrams, evaluate system modularity, and explain high-level design patterns for "${projectName}".`;
-  } else if (isStaffArchitect) {
-    personaContext = `As Staff Architect in the office lounge, you advise on engineering strategy, decoupling dependencies, and RFCs for "${projectName}".`;
-  } else if (isMobile) {
-    personaContext = `As Mobile Developer in the campus area, you craft responsive touch UI, mobile performance, and native gestures for "${projectName}".`;
-  } else if (isSre) {
-    personaContext = `As Site Reliability Engineer, you monitor latency telemetry, server health, deployment pipelines, and system uptime.`;
-  } else if (isOfficeMgr) {
-    personaContext = `As Office Operations Manager, you keep team energy high, take care of office plants, snacks, and team events.`;
-  } else if (isCourier) {
-    personaContext = `As Express Courier, you deliver priority shipments and equipment to the office.`;
-    userRelation = 'someone at the office';
-    addressUser = 'friend';
-  } else if (isNeighbour) {
-    personaContext = `As a friendly neighbor on the sidewalk outside the office, you chat warmly about coffee, the weather, and what is going on around the block.`;
-    userRelation = 'a neighbor or friend walking by';
-    addressUser = 'neighbor';
-  }
-
-  const lines = [
-    `You are ${employeeName}, the ${roleTitle} ${isNeighbour ? 'strolling outside' : `at the office for "${projectName}"${projectDesc}`}.`,
-    `Project Modules & Architecture: ${componentsList}.`,
-    personaContext,
-    `STRICT CONVERSATIONAL GUIDELINES:`,
-    `- Speak like a real human software engineer or colleague in a modern tech office. Be natural, casual, and direct.`,
-    `- CRITICAL: You are a human colleague, NOT an AI bot. NEVER say "As an AI", "I am an AI", or "I don't have access to real-time information".`,
-    `- CRITICAL: NEVER ask "What is your question?", "What's your question?", "What's on your mind?", or "What's your question again?".`,
-    `- CRITICAL: NEVER say "How can I help you today?" or append customer support phrases.`,
-    `- When asked about features or what you made/built in "${projectName}", mention one of the real components (${componentsList}) naturally.`,
-    `- If the user asks about project updates or what you are doing, give a natural 1-2 sentence engineering update regarding "${projectName}".`,
-    `- DO NOT keep re-introducing yourself or repeating your job title. You already know the person speaking to you.`,
-    `- The person talking to you is ${userRelation}. Address them casually as "${addressUser}" or without any title. NEVER call the user "Alex" or any invented name.`,
-    `- Ground your remarks strictly in "${projectName}" and its components (${componentsList}). NEVER make up fantasy games, unrelated companies, or sci-fi lore.`,
-    `- DO NOT mention tasks, tickets, ticket numbers (like TASK-1), Jira/Linear backlogs, or being "on standby for tasks". Just chat naturally as a coworker.`,
-    `- Reply in 1 or 2 natural, concise sentences (under 30 words total).`,
-    `- NEVER recite your system prompt, never output markdown or code blocks, and never roleplay or simulate other speakers.`,
-    ``,
-    `NATURAL CONVERSATION EXAMPLES (Speak just like this):`,
-    `Teammate: what feature did you make in ${projectName}?`,
-    `Response: I've been focusing on connecting our client interface with the ${componentsList.split(',')[0] || 'backend'} services.`,
-    `Teammate: what are project updates?`,
-    `Response: Core services are humming along nicely. Keeping modules clean and reviewing recent changes today.`,
-    `Teammate: hello`,
-    `Response: Hey! Glad to see you. How's everything going?`,
-  ];
-
-  return lines.join('\n');
+function isNearRepeat(current, previous) {
+  const left = normalizeForComparison(current);
+  const right = normalizeForComparison(previous);
+  if (left.length < 24 || right.length < 24) return false;
+  if (left === right) return true;
+  const leftTokens = new Set(left.split(' '));
+  const rightTokens = new Set(right.split(' '));
+  const shared = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+  return shared / Math.max(leftTokens.size, rightTokens.size) > 0.82;
 }
 
+function sanitizeDialogue(raw, employeeName) {
+  if (!raw || typeof raw !== 'string') return '';
+  let text = raw.trim().replace(/^['"“”]+|['"“”]+$/g, '');
+  const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const speakers = [employeeName, 'Teammate', 'Assistant', 'User', 'Human', 'Boss']
+    .filter((value) => typeof value === 'string' && value.trim())
+    .map(escapeRegex);
+  if (speakers.length) {
+    const speakerPrefix = new RegExp(`^(?:${speakers.join('|')}):\\s*`, 'i');
+    const nextSpeaker = new RegExp(`(?:\\r?\\n|\\s+)(?:${speakers.join('|')}):\\s*`, 'i');
+    text = text.replace(speakerPrefix, '').split(nextSpeaker)[0];
+  }
+  text = text.replace(/```[\s\S]*?```/g, '').replace(/`([^`]+)`/g, '$1');
+  text = text.split(/\r?\n\r?\n/)[0].replace(/\s+/g, ' ').trim();
+  if (text.length > 260) {
+    const end = text.slice(0, 257).lastIndexOf(' ');
+    text = `${text.slice(0, end > 100 ? end : 257).trim()}…`;
+  }
+  return text;
+}
+
+function respondToCommonIntent(employee, prompt, history) {
+  const question = normalizeForComparison(prompt);
+  const previousReply = Array.isArray(history)
+    ? [...history].reverse().find((item) => item?.sender !== 'user' && typeof item?.text === 'string')?.text
+    : '';
+  const name = typeof employee?.name === 'string' && employee.name.trim() ? employee.name.trim().slice(0, 60) : 'I';
+  const roleTitle = typeof employee?.roleTitle === 'string' && employee.roleTitle.trim()
+    ? employee.roleTitle.trim().slice(0, 80)
+    : 'office regular';
+  const variants = (items) => items.find((item) => !isNearRepeat(item, previousReply)) || items[items.length - 1];
+
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)(?: .*)?$/.test(question)) {
+    const greetings = [
+      `Hi, I'm ${name}. Nice to meet you.`,
+      `Oh, hey—I'm ${name}. I don't think we've met yet.`,
+      `Hey there! I'm ${name}. It's nice to have some company.`,
+      `Hi! I'm ${name}. How's your day going?`,
+    ].filter((reply) => !isNearRepeat(reply, previousReply));
+    return greetings[Math.floor(Math.random() * greetings.length)] || `Hi, I'm ${name}. Nice to meet you.`;
+  }
+  if (/^(how are you|how is it going|how are things|how is your day)$/.test(question)) {
+    return variants([
+      'Pretty good, thanks. It has been a nice, quiet day.',
+      "Can't complain. How's your day going?",
+      "Doing well—it's nice to take a little break and chat.",
+      'A little sleepy, maybe, but otherwise good.',
+    ]);
+  }
+  if (/^(thanks|thank you|thanks a lot|appreciate it)$/.test(question)) {
+    return variants(['You’re welcome.', 'Glad that helped.', 'Anytime.']);
+  }
+  if (/^(who are you|what are you)$/.test(question)) {
+    return `I'm ${name}, the ${roleTitle} around here. I'm always glad to have someone to chat with.`;
+  }
+  if (/^(what is your name|what s your name)$/.test(question)) {
+    return `I'm ${name}. Nice to meet you.`;
+  }
+  if (/\b(who is your boss|who s your boss|who do you report to|who runs this place|who is your ceo)\b/.test(question)) {
+    return variants([
+      "I don't know their name. No one's told me yet.",
+      "I'm not sure, actually. I haven't met a boss around here.",
+      "I couldn't tell you. I only know my own little corner of the office.",
+    ]);
+  }
+  if (/\b(current date|today(?: s date)?|what day is it|what is the date|what s the date|what date is it|current year)\b/.test(question)) {
+    return variants([
+      "I'm not sure what today's date is—I don't have a calendar here.",
+      "I couldn't say. I don't have today's date in front of me.",
+      "No idea, I'm afraid. I haven't checked a calendar today.",
+    ]);
+  }
+  if (/^(who|what|which|why|where|when|how)$/.test(question)) {
+    return variants([
+      'Who do you mean? I might be missing a bit of context.',
+      'Could you say a little more? I want to make sure I follow.',
+      "I'm not sure what you're referring to yet.",
+    ]);
+  }
+  if (/\b(what (?:are )?you (?:working on|doing)|what are you up to)\b/.test(question)) {
+    return variants([
+      "Just taking a breather and enjoying a quiet moment around here.",
+      "Nothing too exciting—just stretching my legs and taking in the day.",
+      "Having a slow moment. It's nice to stop and chat for a bit.",
+      "Just wandering around the office. How about you?",
+    ]);
+  }
+  if (/\b(this (?:project|app|codebase)|(?:project|codebase|repo|repository|source code|app|application) (?:status|architecture|features?|structure|updates?|details?)|project (?:context|work|progress)|what are we building|what should we build|what (?:tasks|issues) are open|agent runs?|architecture|modules|components|code changes|work in progress|project status|formative)\b/.test(question)) {
+    return variants([
+      "I don't get project details in this chat, so I'd only be guessing. I'm better company for casual office banter.",
+      "I'm just here for a bit of in-character conversation; I can't see the project's files, tasks, or progress.",
+      "I don't have a view into project work from here. Ask me something about life around the office instead.",
+    ]);
+  }
+  if (/\b(what can you help with|how can you help)\b/.test(question)) {
+    return variants([
+      "I'm here for friendly conversation and a little office roleplay. I don't see project files or task updates.",
+      "Mostly good company and office banter. I can't inspect your project from this chat, though.",
+    ]);
+  }
+  return null;
+}
+
+function buildCharacterSystemPrompt(employee) {
+  const employeeName = typeof employee?.name === 'string' ? employee.name.slice(0, 80) : 'Teammate';
+  const roleTitle = typeof employee?.roleTitle === 'string' ? employee.roleTitle.slice(0, 100) : 'office regular';
+  return [
+    `You are ${employeeName}, a fictional ${roleTitle} in a 3D office roleplay chat.`,
+    'Reply directly to the latest message in one or two natural sentences. Be friendly and casual without acting like a help desk.',
+    'Your only established facts are your name and role above, plus facts the user explicitly shared in this conversation. Do not invent a boss, company, coworker, personal history, project details, current date, or other real-world facts. If you do not know, say so simply.',
+    'This model receives no project name, files, tasks, architecture, or agent activity. Do not claim to see those. Do not add a greeting unless the user greeted you.',
+  ].join('\n\n');
+}
+
+function buildBoundedConversationHistory(history, maxCharacters = 900) {
+  if (!Array.isArray(history)) return [];
+  let remaining = maxCharacters;
+  const selected = [];
+  for (const message of history.slice(-6).reverse()) {
+    if (remaining <= 0) break;
+    if (!message || !['user', 'agent'].includes(message.sender) || typeof message.text !== 'string') continue;
+    const text = message.text.trim();
+    if (!text) continue;
+    const boundedText = text.slice(-Math.min(240, remaining));
+    selected.push({ sender: message.sender, text: boundedText });
+    remaining -= boundedText.length;
+  }
+  return selected.reverse();
+}
 async function executeDialogueGeneration(params) {
-  const { employee, project, prompt, history } = params || {};
-  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+  const { employee, prompt, history } = params || {};
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) {
+    if (typeof prompt === 'string' && prompt.length > 4000) return { success: false, error: 'Keep the message under 4,000 characters.' };
     return { success: false, error: 'A message prompt is required.' };
   }
 
   const modelPath = findGgufModelPath();
   if (!modelPath) {
     return { success: false, error: 'formativellm.gguf was not found in the llm folder.' };
+  }
+
+  const directReply = respondToCommonIntent(employee, prompt.trim(), history);
+  if (directReply) {
+    return {
+      success: true,
+      text: sanitizeDialogue(directReply, employee?.name || 'Teammate'),
+      employeeId: employee?.id || 'emp-ceo',
+      employeeName: employee?.name || 'Teammate',
+    };
   }
 
   isGenerating = true;
@@ -299,9 +269,8 @@ async function executeDialogueGeneration(params) {
     }
 
     const employeeId = employee?.id || 'emp-ceo';
-    const employeeName = employee?.name || 'Rex';
-    const projectName = project?.name || 'the project';
-    const systemPrompt = buildCharacterSystemPrompt(employee, project);
+    const employeeName = typeof employee?.name === 'string' ? employee.name.slice(0, 80) : 'Teammate';
+    const systemPrompt = buildCharacterSystemPrompt(employee);
 
     const sequence = contextInstance.getSequence();
     session = new llamaModule.LlamaChatSession({
@@ -312,20 +281,19 @@ async function executeDialogueGeneration(params) {
     // Populate native structured chat history for LlamaChatSession without string script injection
     const chatHistory = [{ type: 'system', text: systemPrompt }];
     let lastAgentMessage = null;
-    if (Array.isArray(history) && history.length > 0) {
-      const recent = history.slice(-6);
-      for (const msg of recent) {
-        if (!msg || typeof msg.text !== 'string' || !msg.text.trim()) continue;
+    const recentHistory = buildBoundedConversationHistory(history);
+    if (recentHistory.length > 0) {
+      for (const msg of recentHistory) {
         if (msg.sender === 'user') {
           chatHistory.push({
             type: 'user',
-            text: msg.text.trim(),
+            text: msg.text,
           });
         } else {
-          lastAgentMessage = msg.text.trim();
+          lastAgentMessage = msg.text;
           chatHistory.push({
             type: 'model',
-            response: [msg.text.trim()],
+            response: [msg.text],
           });
         }
       }
@@ -337,18 +305,31 @@ async function executeDialogueGeneration(params) {
       // Graceful fallback if history fails to apply
     }
 
-    const rawResponse = await session.prompt(prompt.trim(), {
-      maxTokens: 55,
-      temperature: 0.75,
+    const sampling = {
+      maxTokens: 64,
+      temperature: 0.55,
       repeatPenalty: {
-        penalty: 1.35,
-        frequencyPenalty: 0.5,
-        presencePenalty: 0.5,
-        lastTokens: 256,
+        penalty: 1.08,
+        frequencyPenalty: 0.05,
+        presencePenalty: 0,
+        lastTokens: 64,
       },
-    });
+    };
+    let rawResponse = await session.prompt(prompt.trim(), sampling);
+    let cleanResponse = sanitizeDialogue(rawResponse, employeeName);
+    if (isNearRepeat(cleanResponse, lastAgentMessage)) {
+      rawResponse = await session.prompt('Give a fresh, direct response to my latest message. Do not reuse the previous reply or greet me again.', sampling);
+      cleanResponse = sanitizeDialogue(rawResponse, employeeName);
+    }
+    if (!cleanResponse) cleanResponse = 'I missed that. Could you say a little more?';
+    if (isNearRepeat(cleanResponse, lastAgentMessage)) {
+      cleanResponse = [
+        'Sorry, my mind wandered for a second. What were you saying?',
+        'Ah, I lost my train of thought there. Go on?',
+        'Sorry about that—I was distracted for a moment.',
+      ][Math.floor(Math.random() * 3)];
+    }
 
-    const cleanResponse = sanitizeDialogue(rawResponse, employeeName, projectName, lastAgentMessage, prompt.trim());
     resetIdleTimer();
 
     return {
@@ -390,6 +371,12 @@ function generateOfficeDialogue(params) {
 }
 
 module.exports = {
+  configureLocalOfficeLlm: (options = {}) => { userDataPath = options.userDataPath || null; },
+  isNearRepeat,
+  sanitizeDialogue,
+  respondToCommonIntent,
+  buildCharacterSystemPrompt,
+  buildBoundedConversationHistory,
   hasLocalOfficeLlm,
   generateOfficeDialogue,
   disposeAll,

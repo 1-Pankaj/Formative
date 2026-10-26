@@ -3,12 +3,21 @@ import { describe, it, expect } from 'vitest';
 import {
   findExecutable,
   isWindowsBatch,
+  isSafeProviderSessionId,
   clampText,
   relativeProjectPaths,
   createAgentRunManager,
 } from '../electron/agent-run-manager.cjs';
 
 describe('Agent Run Manager Utilities', () => {
+  it('accepts normal provider session IDs and rejects shell syntax', () => {
+    expect(isSafeProviderSessionId('1a2b3c4d-55ee-4d00-9f60-123456789abc')).toBe(true);
+    expect(isSafeProviderSessionId('session_01.2')).toBe(true);
+    expect(isSafeProviderSessionId('session&whoami')).toBe(false);
+    expect(isSafeProviderSessionId('session with spaces')).toBe(false);
+    expect(isSafeProviderSessionId('--help')).toBe(false);
+  });
+
   it('detects Windows batch files accurately', () => {
     if (process.platform === 'win32') {
       expect(isWindowsBatch('C:\\path\\to\\codex.cmd')).toBe(true);

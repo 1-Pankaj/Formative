@@ -1,12 +1,14 @@
 # Third-party notices
 
-This document contains licensing notices and acknowledgements for third-party software, model weights, and assets incorporated into or distributed alongside Formative.
+This document contains notices for third-party software and assets used by Formative, plus the upstream license reference for the optional SmolLM2 model family. No GGUF model weights are committed to this repository or included in default Windows packages. A user-selected GGUF file is copied to local app data and is not redistributed by Formative.
 
 ---
 
-## 1. SmolLM2-360M-Instruct (Local Language Model)
+## 1. SmolLM2-360M-Instruct (Optional local model)
 
-The local coordinator dialogue runtime bundles quantized weights derived from SmolLM2-360M-Instruct (`formativellm.gguf`), developed by Loubna Ben Allal, Anton Lozhkov, Elie Bakouch, Gabriel Martin Blazquez, Lewis Tunstall, Leandro von Werra, and Thomas Wolf at Hugging Face.
+Formative's local office-chat runtime can use GGUF weights derived from SmolLM2-360M-Instruct (`formativellm.gguf`). The upstream Hugging Face model card identifies the model under the Apache License, Version 2.0. The local model file is not committed or shipped by default.
+
+This notice records the upstream model-family license; it does not verify the provenance, conversion, quantization, or licensing of an arbitrary GGUF file selected by a user. Before Formative publishes or bundles a model file, maintainers must verify that exact file's source, license, and required notices. Users are responsible for checking the terms of models they select.
 
 - Upstream Repository: [HuggingFaceTB/SmolLM2-360M-Instruct](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct)
 - License: Apache License, Version 2.0

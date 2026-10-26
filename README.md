@@ -10,8 +10,8 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20Desktop-black.svg?style=flat-square)](#download)
 [![Build](https://img.shields.io/github/actions/workflow/status/1-Pankaj/Formative/build.yml?branch=master&style=flat-square&label=Build)](https://github.com/1-Pankaj/Formative/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/1-Pankaj/Formative?style=flat-square&color=black)](https://github.com/1-Pankaj/Formative/releases)
-[![Status: Public Beta](https://img.shields.io/badge/Status-Public%20Beta-black.svg?style=flat-square)](https://github.com/1-Pankaj/Formative/releases)
-[![Stack](https://img.shields.io/badge/Stack-React%2019%20%7C%20TypeScript%20%7C%20Electron%2035-black.svg?style=flat-square)](#tech-stack)
+[![Status: Active Development](https://img.shields.io/badge/Status-Active%20Development-black.svg?style=flat-square)](https://github.com/1-Pankaj/Formative/releases)
+[![Stack](https://img.shields.io/badge/Stack-React%2019%20%7C%20TypeScript%20%7C%20Electron%2045-black.svg?style=flat-square)](#tech-stack)
 
 </div>
 
@@ -34,12 +34,9 @@ Formative brings project work, architecture diagrams, and supported local agent 
 
 ## Download
 
-Pre-compiled Windows releases are available on the [Releases page](https://github.com/1-Pankaj/Formative/releases):
+Check the [Releases page](https://github.com/1-Pankaj/Formative/releases) for published Windows builds. The repository includes Electron Builder targets for a setup installer and portable executable; a release page is the source of truth for whether those artifacts have been built and published.
 
-- **Setup Installer (`Formative-Setup-1.0.0.exe`)**: Standard Windows installer with desktop shortcuts, start menu integration, and uninstaller.
-- **Portable Executable (`Formative-Portable-1.0.0.exe`)**: Single-file standalone executable that runs without installation.
-
-Both packages have the local offline LLM runtime bundled inside, requiring no external setup or model downloads.
+The GGUF model weights are not stored in this GitHub repository and are not included in default installer builds. In the desktop app, open Project Office and choose **Choose model** to add a compatible GGUF file; Formative copies it to local app data and runs it on this device. Releases can publish a separately licensed model asset when maintainers choose to provide one.
 
 ## What works today
 
@@ -91,7 +88,7 @@ Each project has its own office team. The project coordinator is always present;
 
 Tasks can be assigned to enabled employees. Opening Agent Chat from a task selects that task and its enabled assignee. Starting a run in Agent Chat records the selected employee and task with the real provider run. Codex CLI and Claude Code CLI runs are the only supported run providers today. Runs remain read-only.
 
-The coordinator chat starts a real read-only Codex CLI or Claude Code CLI conversation. It uses the selected task, or a bounded list of open project tasks, as context. Provider events update the office activity display; ambient scene behavior is decorative and does not represent agent work. Formative cannot attach to existing Codex desktop, Claude desktop, or Antigravity IDE sessions yet.
+The coordinator can start a real read-only Codex CLI or Claude Code CLI conversation. It uses the selected task, or a bounded list of open project tasks, as context. Provider events update the office activity display; ambient scene behavior is decorative and does not represent agent work. Office chat is a separate, optional roleplay feature: choose a compatible GGUF file, then residents chat in character on this device. The local model receives the character name and role plus the messages in that chat; it does not receive project files, tasks, architecture, or agent-run activity. It is not a project assistant. Small models can still give generic or awkward roleplay replies. A persistent background monitor tracks provider runs and local model replies while you move around the project. Formative cannot attach to existing Codex desktop, Claude desktop, or Antigravity IDE sessions yet.
 
 Employee skills are currently bounded labels included as descriptive run context. They are not executable skill packs, custom tool permissions, or project access rules.
 
@@ -99,7 +96,7 @@ The office is a view of project records, not a separate task database. Removing 
 
 ## Privacy and provider costs
 
-Project records are saved in Formative's local app data, with a browser-storage recovery copy. The browser preview does not have Electron file access, so local folder scanning and transcript import require the desktop app.
+Project records are saved in Formative's local app data, with a browser-storage recovery copy. A model you choose is copied to Formative's local app data; office chat runs on-device and does not send its conversation to a model service. The local office model receives only the selected character's name and role and the messages in that character's conversation, not project data. The browser preview does not have Electron file access, so local folder scanning, transcript import, and local model installation require the desktop app.
 
 Architecture analysis reads selected project files on your device and does not send them to Formative. Agent Chat uses the provider service associated with the selected CLI. The provider may receive your prompt and relevant project context; provider usage or subscription fees may apply. Transcript contents and file paths can be sensitive, so choose files deliberately.
 
@@ -117,7 +114,7 @@ The previous office tile maps and third-party tile artwork have been removed. Th
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v22 LTS or higher recommended, tested on Node 24 and 26)
+- [Node.js](https://nodejs.org/) (v22 LTS or higher)
 - npm
 
 ### Install
@@ -153,6 +150,13 @@ npm run dist             # Builds both packages into build-release/
 npm run dist:dir         # Creates an unpacked review directory
 ```
 
+These commands omit model weights by default, so source builds do not create a very large installer. To intentionally bundle a local model for a private or separately distributed build, put `formativellm.gguf` in `LLM/` and set `FORMATIVE_BUNDLE_LLM=1` before running a packaging command. Do not commit the model file to Git. For PowerShell:
+
+```powershell
+$env:FORMATIVE_BUNDLE_LLM = "1"
+npm run dist:installer
+```
+
 ## Canvas controls
 
 Scroll to zoom, drag the canvas to pan, move nodes by dragging them, and connect components from one node handle to another. Canvas connections are user-authored diagram lines; Formative does not verify them against project code.
@@ -165,7 +169,7 @@ Scroll to zoom, drag the canvas to pan, move nodes by dragging them, and connect
 - **3D Office Engine:** [Three.js](https://threejs.org/)
 - **Local LLM Runtime:** [node-llama-cpp](https://node-llama-cpp.withfluff.com/) with SmolLM2-360M-Instruct
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/) and Formative's internal SVG glyph system
-- **Desktop Runtime:** [Electron 35](https://www.electronjs.org/) and [Electron Builder](https://www.electron.build/)
+- **Desktop Runtime:** [Electron 45](https://www.electronjs.org/) and [Electron Builder](https://www.electron.build/)
 
 ## License
 

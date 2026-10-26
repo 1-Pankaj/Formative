@@ -6,7 +6,7 @@ const { pathToFileURL } = require('url');
 const { normalizeAgentHistory } = require('./agent-run-history.cjs');
 const { createAgentRunManager } = require('./agent-run-manager.cjs');
 const { readArchitectureSources } = require('./architecture-source-reader.cjs');
-const { generateOfficeDialogue, hasLocalOfficeLlm, disposeAll: disposeLocalLlm } = require('./local-office-llm.cjs');
+const { configureLocalOfficeLlm, generateOfficeDialogue, hasLocalOfficeLlm, disposeAll: disposeLocalLlm } = require('./local-office-llm.cjs');
 
 let mainWindow = null;
 let activeWatcher = null;
@@ -252,6 +252,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  configureLocalOfficeLlm({ userDataPath: app.getPath('userData') });
   recoverInterruptedAgentRuns();
   createWindow();
 
@@ -285,6 +286,46 @@ handleAppIpc('generate-office-dialogue', async (event, request) => {
 
 handleAppIpc('has-local-office-llm', async () => {
   return { available: hasLocalOfficeLlm() };
+});
+
+handleAppIpc('select-local-office-model', async () => {
+  if (!mainWindow) return { success: false, error: 'Formative is not ready to import a model.' };
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    title: 'Choose a local GGUF model',
+    filters: [{ name: 'GGUF model', extensions: ['gguf'] }],
+  });
+  if (result.canceled || !result.filePaths[0]) return { success: false, cancelled: true };
+
+  let tempFile;
+  try {
+    const selectedPath = result.filePaths[0];
+    const selectedStat = fs.lstatSync(selectedPath);
+    if (!selectedStat.isFile() || selectedStat.isSymbolicLink() || selectedStat.size < 4 || selectedStat.size > 2 * 1024 * 1024 * 1024) {
+      throw new Error('Choose a regular GGUF model file smaller than 2 GB.');
+    }
+    const fd = fs.openSync(selectedPath, 'r');
+    let magic;
+    try {
+      const header = Buffer.alloc(4);
+      fs.readSync(fd, header, 0, header.length, 0);
+      magic = header.toString('ascii');
+    } finally {
+      fs.closeSync(fd);
+    }
+    if (magic !== 'GGUF') throw new Error('That file does not have a GGUF model header.');
+
+    const modelDirectory = path.join(getAppDataPath(), 'llm');
+    fs.mkdirSync(modelDirectory, { recursive: true });
+    const targetPath = path.join(modelDirectory, 'formativellm.gguf');
+    tempFile = `${targetPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+    await fs.promises.copyFile(selectedPath, tempFile, fs.constants.COPYFILE_EXCL);
+    await fs.promises.rename(tempFile, targetPath);
+    return { success: true, available: hasLocalOfficeLlm() };
+  } catch (error) {
+    if (tempFile) await fs.promises.rm(tempFile, { force: true }).catch(() => {});
+    return { success: false, error: error instanceof Error ? error.message : 'Formative could not install that model.' };
+  }
 });
 
 handleAppIpc('get-agent-provider-statuses', async () => {

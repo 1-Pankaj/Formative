@@ -590,3 +590,11 @@ export function getProjectOfficeTeam(config?: ProjectOfficeConfig | null): Proje
 
   return { ceo, employees };
 }
+
+/** Stable signature for changes that must refresh the office roster and sprites. */
+export function getOfficeTeamSignature(team: ProjectOfficeTeam): string {
+  return JSON.stringify({
+    ceo: team?.ceo || null,
+    employees: Array.isArray(team?.employees) ? team.employees : [],
+  });
+}

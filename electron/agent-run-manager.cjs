@@ -18,6 +18,10 @@ function isWindowsBatch(filePath) {
   return process.platform === 'win32' && typeof filePath === 'string' && /\.(cmd|bat)$/i.test(filePath);
 }
 
+function isSafeProviderSessionId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,255}$/.test(value);
+}
+
 function findExecutable(name) {
   const pathEntries = String(process.env.PATH || '').split(path.delimiter).filter(Boolean);
   const candidates = process.platform === 'win32'
@@ -398,16 +402,22 @@ function createAgentRunManager({ emitEvent }) {
     if (!executable) return { success: false, error: `${provider.displayName} is not installed or could not be found on this computer.` };
     if (request.permissionMode !== 'read-only') return { success: false, error: 'Only read-only agent runs are available in this first workflow.' };
 
+    // Session IDs are passed as provider CLI arguments. Keep them out of shell syntax
+    // when a Windows installation exposes a .cmd/.bat shim (shell:true is required
+    // for those shims on Windows).
+    if (request.providerSessionId !== undefined && !isSafeProviderSessionId(request.providerSessionId)) {
+      return { success: false, error: 'The saved provider session ID contains unsupported characters. Start a new conversation.' };
+    }
+
     const providerSessionId = request.providerId === 'claude-code'
       ? (request.providerSessionId || crypto.randomUUID())
       : request.providerSessionId;
     let args;
     if (request.providerId === 'codex-cli') {
-      const cdArg = isWindowsBatch(executable) && projectPath.includes(' ') && !projectPath.startsWith('"')
-        ? `"${projectPath}"`
-        : projectPath;
       args = [
-        '--sandbox', 'read-only', '--ask-for-approval', 'never', '--cd', cdArg,
+        // spawn's cwd is already projectPath. Do not repeat that path as a CLI
+        // argument: .cmd/.bat providers run through cmd.exe on Windows.
+        '--sandbox', 'read-only', '--ask-for-approval', 'never',
         'exec', '--json', '--ignore-user-config', '--skip-git-repo-check',
       ];
       if (providerSessionId) args.push('resume', providerSessionId);
@@ -522,6 +532,7 @@ module.exports = {
   createAgentRunManager,
   findExecutable,
   isWindowsBatch,
+  isSafeProviderSessionId,
   clampText,
   relativeProjectPaths,
 };

@@ -17,7 +17,7 @@ interface TimelineEntry {
 export const Timeline = ({
   data,
   title = "How Formative Works",
-  subtitle = "From your local folder to a living visual architecture in four simple steps.",
+  subtitle = "Screenshots are illustrative examples and may show sample project data; they do not show live user or agent activity.",
 }: {
   data: TimelineEntry[];
   title?: string;

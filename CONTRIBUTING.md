@@ -12,7 +12,7 @@ Thank you for taking an interest in Formative. Contributions should make the app
 
 ## Set up the project
 
-Use Node.js 18 or later and npm. From the repository root:
+Use Node.js 22 LTS or later and npm. From the repository root:
 
 ```bash
 npm ci
@@ -24,6 +24,8 @@ To run the Windows desktop app:
 ```bash
 npm run desktop
 ```
+
+The optional office model is not in the repository. You can run the app without it; Project Office will offer to import a compatible `.gguf` file when you have one. The model is stored in local app data. Windows packages omit model weights by default. See the README if you intentionally need a private build that bundles them.
 
 To run the automated test suite:
 

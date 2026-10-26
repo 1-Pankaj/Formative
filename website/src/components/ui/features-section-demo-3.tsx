@@ -15,32 +15,32 @@ import overviewScreen from "@/assets/formative-overview-screen.png";
 export default function FeaturesSectionDemo() {
   const features = [
     {
-      title: "Automatic Visual Code Map",
+      title: "Local architecture map",
       description:
-        "Formative scans your project files and automatically draws a visual diagram of your app. See your frontend pages, API endpoints, database schemas, and imports in one zoomable view.",
+        "Build a bounded, read-only map from selected local source files. Imports are observed from code; some API and schema links are labeled as inferences. The map is separate from your editable canvas.",
       skeleton: <SkeletonOne />,
       className:
         "col-span-1 lg:col-span-4 border-b lg:border-r border-white/[0.08]",
     },
     {
-      title: "Interactive 3D Office Floor",
+      title: "Project office",
       description:
-        "Meet your project specialists on a procedural 3D spatial floor. Teammate activity visually reflects real agent work, research, and file edits.",
+        "See your project coordinator, enabled teammates, task assignments, and supported live agent runs. Ambient movement is decorative and does not claim work is happening.",
       skeleton: <SkeletonTwo />,
       className: "border-b col-span-1 lg:col-span-2 border-white/[0.08]",
     },
     {
-      title: "Built-In AI Assistant, No Monthly Fees",
+      title: "Optional local office chat",
       description:
-        "Chat with your project assistant powered by the bundled SmolLM2 model. Ask questions about your code with instant local responses, no API keys, and zero subscriptions.",
+        "Choose a compatible GGUF file to use the local office chat. Model weights are not bundled by default; small models can give generic or inaccurate answers.",
       skeleton: <SkeletonThree />,
       className:
         "col-span-1 lg:col-span-3 lg:border-r border-white/[0.08]",
     },
     {
-      title: "100% Private, Works Offline",
+      title: "Understand the data boundary",
       description:
-        "Your code never leaves your computer. Formative sends 0 bytes to remote cloud servers, requires no login or account, and works with airplane mode turned on.",
+        "Project scans run locally and do not upload source files to Formative. Starting Codex or Claude Code may send your prompt and selected context to that provider.",
       skeleton: <SkeletonFour />,
       className: "col-span-1 lg:col-span-3 border-b lg:border-none border-white/[0.08]",
     },
@@ -53,10 +53,13 @@ export default function FeaturesSectionDemo() {
           Features
         </div>
         <h2 className="text-4xl sm:text-6xl font-heading italic text-white tracking-[-3px] leading-[0.95]">
-          Everything you need to navigate and understand your code.
+          A clearer workspace around your project.
         </h2>
         <p className="mt-4 text-base text-white/60 font-body font-light max-w-xl mx-auto">
-          Built for developers and teams who want a clear picture of their codebase without complexity or privacy compromises.
+          Keep project records together, inspect bounded source evidence, and follow supported agent runs without mixing them up with model chat or examples.
+        </p>
+        <p className="mt-3 text-xs text-white/40 font-body max-w-xl mx-auto">
+          Screenshots are illustrative examples and may show sample project data; they do not show live user or agent activity.
         </p>
       </div>
 
@@ -111,17 +114,17 @@ export const SkeletonOne = () => {
       <div className="relative w-full h-full overflow-hidden">
         <img
           src={canvasScreen}
-          alt="Formative Living Architecture Canvas"
+          alt="Formative editable project canvas"
           className="w-full h-full object-cover object-left-top transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#090a10] via-transparent to-black/30 pointer-events-none" />
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white/70 text-xs px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span className="font-medium text-white">Living Architecture Blueprint</span>
-          <span className="font-mono text-[11px] text-white/50">Local Project Canvas</span>
+          <span className="font-medium text-white">Editable project canvas</span>
+          <span className="font-mono text-[11px] text-white/50">User-authored diagram</span>
         </div>
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white/60 px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span>TypeScript · Python · Rust · Go</span>
-          <span className="text-white/90">Interactive Zoom & Pan</span>
+          <span>Move · connect · label</span>
+          <span className="text-white/90">Canvas is not a source scan</span>
         </div>
       </div>
     </div>
@@ -139,8 +142,8 @@ export const SkeletonTwo = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#090a10] via-transparent to-black/20 pointer-events-none" />
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white/70 text-xs px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span className="font-medium text-white">Three.js 3D Spatial Floor</span>
-          <span className="font-mono text-[11px] text-white/50">23 Specialists</span>
+          <span className="font-medium text-white">Three.js project office</span>
+          <span className="font-mono text-[11px] text-white/50">Team set per project</span>
         </div>
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
           <div className="flex -space-x-2">
@@ -148,7 +151,7 @@ export const SkeletonTwo = () => {
             <img src={agentOtto} alt="Otto" className="w-8 h-8 rounded-full border border-white/20 object-cover" />
           </div>
           <span className="text-[11px] text-white/80 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10">
-            Active Teammates
+            Example characters
           </span>
         </div>
       </div>
@@ -167,12 +170,12 @@ export const SkeletonThree = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#090a10] via-transparent to-black/30 pointer-events-none" />
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white/70 text-xs px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span className="font-medium text-white">Local SmolLM2 Teammates</span>
-          <span className="font-mono text-[11px] text-white/50">Zero Monthly Fees</span>
+          <span className="font-medium text-white">Optional local model chat</span>
+          <span className="font-mono text-[11px] text-white/50">User supplies GGUF</span>
         </div>
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white/60 px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span>Codex · Claude Code · Antigravity</span>
-          <span className="text-white/90">Instant Local Replies</span>
+          <span>Runs on this device</span>
+          <span className="text-white/90">Answers can be inaccurate</span>
         </div>
       </div>
     </div>
@@ -185,17 +188,17 @@ export const SkeletonFour = () => {
       <div className="relative w-full h-full overflow-hidden">
         <img
           src={overviewScreen}
-          alt="Formative Air-Gapped Project Overview"
+          alt="Formative project overview"
           className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#090a10] via-transparent to-black/30 pointer-events-none" />
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white/70 text-xs px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span className="font-medium text-white">100% Air-Gapped Operation</span>
-          <span className="font-mono text-[11px] text-white/50">0 KB Cloud Sync</span>
+          <span className="font-medium text-white">Local scans · provider runs</span>
+          <span className="font-mono text-[11px] text-white/50">No source upload to Formative</span>
         </div>
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-white/60 px-2.5 py-1.5 rounded-lg bg-black/60 backdrop-blur-md border border-white/10">
-          <span>Airplane Mode Compatible</span>
-          <span className="text-white/90">No Account Required</span>
+          <span>CLI runs use the provider</span>
+          <span className="text-white/90">No Formative account</span>
         </div>
       </div>
     </div>

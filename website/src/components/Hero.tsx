@@ -45,14 +45,14 @@ export const Hero: React.FC = () => {
           <a href="#privacy" className="px-3.5 py-1.5 text-xs font-medium text-white/80 font-body hover:text-white transition-colors">
             Privacy
           </a>
-          <a href="#compare" className="px-3.5 py-1.5 text-xs font-medium text-white/80 font-body hover:text-white transition-colors">
-            Compare
+          <a href="#capabilities" className="px-3.5 py-1.5 text-xs font-medium text-white/80 font-body hover:text-white transition-colors">
+            Current scope
           </a>
           <a
             href="#download"
             className="bg-white text-black rounded-full px-4 py-1.5 text-xs font-medium font-body flex items-center gap-1.5 hover:bg-white/90 transition-colors ml-1 shadow-sm"
           >
-            <span>Download v1.0.0</span>
+            <span>Source & releases</span>
             <Icons.ArrowUpRight size={13} />
           </a>
         </nav>
@@ -74,32 +74,32 @@ export const Hero: React.FC = () => {
         {/* Simple, Human Announcement Pill */}
         <motion.div {...motionProps(0.2)} className="liquid-glass rounded-full px-4 py-1.5 inline-flex items-center gap-2 mb-6">
           <span className="text-xs text-white/90 font-body">
-            Formative 1.0 Public Beta is now available for Windows
+            Open-source · Windows-first desktop workspace
           </span>
         </motion.div>
 
         {/* Headline with Staggered Word-by-Word BlurText */}
         <div className="max-w-4xl">
           <BlurText
-            text="Visual Architecture & Local AI Studio Built For Speed"
+            text="Keep the project, map, and agent run together."
             className="text-5xl sm:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.88] tracking-[-4px]"
           />
         </div>
 
         {/* Clear, Accessible Subtext for Everyone */}
         <motion.p {...motionProps(0.5)} className="mt-6 text-sm sm:text-base text-white/70 max-w-2xl font-body font-light leading-relaxed">
-          Open any project folder to get an automatic visual map of your code, interact with local AI assistants, and supervise autonomous CLI tools. 100% offline, free forever, and zero cloud tracking.
+          Formative scans selected project files locally, keeps an editable canvas and task list with the project, and starts read-only Codex CLI or Claude Code CLI runs. Provider runs may send your prompt and selected context to that provider. Local office chat is optional and needs a GGUF model you choose.
         </motion.p>
 
         {/* CTA buttons */}
         <motion.div {...motionProps(0.7)} className="mt-8 flex items-center gap-6 flex-wrap justify-center">
           <a
-            href="https://github.com/1-Pankaj/Formative/releases/latest"
+            href="https://github.com/1-Pankaj/Formative/releases"
             target="_blank"
             rel="noreferrer"
             className="liquid-glass-strong rounded-full px-6 py-3 text-sm font-body font-medium text-white flex items-center gap-2.5 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl"
           >
-            <span>Download for Windows (.exe)</span>
+            <span>Check GitHub Releases</span>
             <Icons.Download size={15} />
           </a>
 
@@ -110,21 +110,21 @@ export const Hero: React.FC = () => {
             <div className="w-7 h-7 rounded-full liquid-glass flex items-center justify-center">
               <Icons.Play size={11} className="ml-0.5" />
             </div>
-            <span>See the Workspace</span>
+            <span>See what works</span>
           </a>
         </motion.div>
 
-        {/* Simple Honest Metrics */}
+        {/* Current product boundaries, not performance claims */}
         <motion.div {...motionProps(0.9)} className="mt-12 flex flex-wrap gap-4 justify-center">
           <div className="liquid-glass p-5 w-[190px] sm:w-[210px] rounded-[1.25rem] text-left">
             <div className="w-8 h-8 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/80">
               <Icons.ClockIcon size={16} />
             </div>
             <div className="text-3xl sm:text-4xl font-heading italic tracking-[-1px] leading-none mt-4 text-white">
-              0 ms
+              Windows
             </div>
             <div className="text-xs font-body text-white/50 mt-1.5 leading-snug">
-              Local AI response latency
+              First desktop target
             </div>
           </div>
 
@@ -133,10 +133,10 @@ export const Hero: React.FC = () => {
               <Icons.GlobeIcon size={16} />
             </div>
             <div className="text-3xl sm:text-4xl font-heading italic tracking-[-1px] leading-none mt-4 text-white">
-              0 KB
+              2 CLIs
             </div>
             <div className="text-xs font-body text-white/50 mt-1.5 leading-snug">
-              Data sent to external servers
+              Codex CLI and Claude Code CLI
             </div>
           </div>
 
@@ -145,10 +145,10 @@ export const Hero: React.FC = () => {
               <Icons.ArchitectureMap size={16} />
             </div>
             <div className="text-3xl sm:text-4xl font-heading italic tracking-[-1px] leading-none mt-4 text-white">
-              7 Stacks
+              Optional
             </div>
             <div className="text-xs font-body text-white/50 mt-1.5 leading-snug">
-              Languages supported out of box
+              Local GGUF office chat
             </div>
           </div>
         </motion.div>

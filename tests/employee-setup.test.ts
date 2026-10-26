@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getProjectOfficeTeam, safeUUID, createOfficeMemberProfile } from '../src/components/office/officeCast';
+import { getProjectOfficeTeam, safeUUID, createOfficeMemberProfile, getOfficeTeamSignature } from '../src/components/office/officeCast';
 
 describe('Office Team Normalization & Resilience', () => {
   it('generates non-empty fallback UUIDs even when globalThis.crypto is unavailable', () => {
@@ -70,5 +70,20 @@ describe('Office Team Normalization & Resilience', () => {
     expect(profile.skills.length).toBeGreaterThan(0);
     expect(profile.appearance).toBeDefined();
     expect(typeof profile.appearance.hairStyle).toBe('string');
+  });
+
+  it('changes the office refresh signature when a teammate appearance changes', () => {
+    const team = getProjectOfficeTeam({ employees: [{ ...createOfficeMemberProfile('frontend'), id: 'employee-1' }] });
+    const before = getOfficeTeamSignature(team);
+    const changed = {
+      ...team,
+      employees: team.employees.map((employee) => ({
+        ...employee,
+        appearance: { ...employee.appearance, hair: '#123456' },
+      })),
+    };
+
+    expect(getOfficeTeamSignature(changed)).not.toBe(before);
+    expect(getOfficeTeamSignature({ ...team, employees: [...team.employees] })).toBe(before);
   });
 });

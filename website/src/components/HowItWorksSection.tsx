@@ -12,29 +12,29 @@ export const HowItWorksSection: React.FC = () => {
   const steps = [
     {
       step: '01',
-      title: 'Open Any Repository',
-      description: 'Point Formative to any project folder on your computer. No accounts, no setup scripts, no cloud logins.',
+      title: 'Choose a project',
+      description: 'Create a blank workspace, open a local folder, or use a clearly labeled starter example.',
       content: (
         <div className="space-y-4 text-left">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-white/50 font-mono">
-            <span>Input: Local File System Directory</span>
-            <span>Zero-Execution Parse</span>
+            <span>Folder access: selected by you</span>
+            <span>Local, bounded scan</span>
           </div>
           <p className="text-sm font-light text-white/70 leading-relaxed">
-            Formative immediately analyzes your code using high-speed static syntax parsing. It works out of the box with TypeScript, JavaScript, Vue SFC, Svelte, Astro, Python, Go, and Rust. Because it parses syntax without running your code, your machine is never exposed to untrusted scripts.
+            The Project structure view samples folder names and selected configuration files. The separate Architecture map reads a bounded set of source files. Neither scan executes project code or installs dependencies.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
             <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center text-xs text-white/80">
-              TypeScript / JS
+              Project structure
             </div>
             <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center text-xs text-white/80">
-              Python & FastAPI
+              Editable canvas
             </div>
             <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center text-xs text-white/80">
-              Go & Rust
+              Read-only map
             </div>
             <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center text-xs text-white/80">
-              Vue, Svelte, Astro
+              User-authored links
             </div>
           </div>
         </div>
@@ -42,49 +42,49 @@ export const HowItWorksSection: React.FC = () => {
     },
     {
       step: '02',
-      title: 'Visual Architecture Map',
-      description: 'Formative automatically connects your pages, endpoints, models, and imports into a live visual diagram.',
+      title: 'Keep two kinds of map separate',
+      description: 'The editable canvas is yours to maintain. The Architecture map is a read-only view of source evidence and clearly marked inferences.',
       content: (
         <div className="space-y-4 text-left">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-white/50 font-mono">
-            <span>Canvas: Real-Time Living Graph</span>
-            <span>Zoomable & Interactive</span>
+            <span>Architecture map: static scan</span>
+            <span>Evidence and inferences</span>
           </div>
           <p className="text-sm font-light text-white/70 leading-relaxed">
-            Instead of holding a mental model of hundreds of files, you get a clean living map. Click any endpoint to see which frontend button calls it and which database table it modifies. As you save files in your editor, Formative updates the diagram automatically.
+            Import links can be observed in source. Some API and schema links are inferred, and unsupported conventions may be missing. Refresh the map to scan again; it does not update on every file save.
           </p>
           <div className="rounded-xl overflow-hidden border border-white/[0.08] shadow-lg max-h-56">
-            <img src={canvasScreen} alt="Living Architecture Diagram" className="w-full h-full object-cover object-top" />
+            <img src={canvasScreen} alt="Formative project canvas example" className="w-full h-full object-cover object-top" />
           </div>
         </div>
       ),
     },
     {
       step: '03',
-      title: 'Interactive 3D Office Stage',
-      description: 'Your project teammates stand at their desks on a spatial floor rendered with Three.js.',
+      title: 'Follow supported work in the office',
+      description: 'The optional 3D office reflects project records and supported live CLI activity.',
       content: (
         <div className="space-y-4 text-left">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-white/50 font-mono">
-            <span>Environment: 3D Spatial Floor</span>
-            <span>Bundled SmolLM2 Model</span>
+            <span>Office: project-scoped view</span>
+            <span>Optional local chat model</span>
           </div>
           <p className="text-sm font-light text-white/70 leading-relaxed">
-            Formative brings architecture and AI coordination into a tangible spatial environment. Up to 23 customizable specialist characters represent your active project workflows. Walk up to any coworker to ask questions about your code, review tasks, or discuss project architecture.
+            The project coordinator is present by default; specialist employees appear when enabled. Their role and task assignments do not mean an agent is running. The office chat uses a user-selected local GGUF model and may give inaccurate answers.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div className="rounded-lg p-3 bg-white/[0.02] border border-white/[0.06] flex items-center gap-3">
               <img src={officeRex} alt="Rex" className="w-12 h-12 rounded-lg object-cover" />
               <div>
                 <div className="text-white text-xs font-medium">Rex (Executive)</div>
-                <div className="text-white/40 text-[11px]">Task coordination & planning</div>
+                <div className="text-white/40 text-[11px]">Project coordinator</div>
               </div>
             </div>
             <div className="rounded-lg p-3 bg-white/[0.02] border border-white/[0.06] flex items-center gap-3">
               <img src={agentOtto} alt="Otto" className="w-12 h-12 rounded-lg object-cover" />
               <div>
                 <div className="text-white text-xs font-medium">Otto (Product Designer)</div>
-                <div className="text-white/40 text-[11px]">UI layout & component flows</div>
+                <div className="text-white/40 text-[11px]">Example employee</div>
               </div>
             </div>
           </div>
@@ -93,23 +93,23 @@ export const HowItWorksSection: React.FC = () => {
     },
     {
       step: '04',
-      title: 'Supervised Agent CLI Execution',
-      description: 'Run Claude Code and Codex CLI commands with complete supervision and strict safety gates.',
+      title: 'Start a read-only CLI run',
+      description: 'Formative starts supported Codex CLI and Claude Code CLI sessions with read-only settings.',
       content: (
         <div className="space-y-4 text-left">
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-white/50 font-mono">
-            <span>Execution: Supervised Sandboxing</span>
-            <span>User Confirmation First</span>
+            <span>Mode: read-only</span>
+            <span>Provider service used</span>
           </div>
           <p className="text-sm font-light text-white/70 leading-relaxed">
-            When an agent runs searches or drafts code refactors, Formative displays the proposed diffs in a clear visual inspector. You approve each change before any file is saved. Your code stays 100% under your control.
+            Formative displays the provider events it receives. These runs do not let the agent save project edits through this workflow. Your prompt and selected context may be sent to the provider and may incur provider charges.
           </p>
           <div className="rounded-xl overflow-hidden border border-white/[0.08] shadow-lg max-h-56">
-            <img src={chatScreen} alt="Supervised Agent Chat & Execution" className="w-full h-full object-cover object-top" />
+            <img src={chatScreen} alt="Formative Agent Chat example" className="w-full h-full object-cover object-top" />
           </div>
           <div className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs">
-            <span className="text-white/70">Read-Only Safe Mode Enabled</span>
-            <span className="text-white font-medium">Zero Unattended Edits</span>
+            <span className="text-white/70">Read-only provider run</span>
+            <span className="text-white font-medium">Codex CLI · Claude Code CLI</span>
           </div>
         </div>
       ),

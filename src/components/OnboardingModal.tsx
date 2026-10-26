@@ -104,10 +104,10 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <div className="space-y-4">
               <div>
                 <h3 className="text-base font-semibold">
-                  Welcome to Structra
+                  Welcome to Formative
                 </h3>
                 <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                  Structra can map a small sample of project folders and inspect existing agent transcripts. It does not start agent runs yet.
+                  Formative organizes project tasks and architecture canvases, supports read-only Codex and Claude Code runs, and includes an on-device office chat when you add a compatible local model.
                 </p>
               </div>
 

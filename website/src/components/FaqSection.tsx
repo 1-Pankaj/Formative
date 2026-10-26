@@ -6,29 +6,34 @@ export const FaqSection: React.FC = () => {
 
   const faqs = [
     {
-      question: "Do I need an active internet connection to run Formative?",
+      question: "Does every part of Formative work offline?",
       answer:
-        "No. Formative is designed to run 100% offline. The bundled SmolLM2 neural model, syntax analyzers, and 3D office stage execute entirely on your computer's CPU or GPU with zero outbound network requests.",
+        "Project structure and architecture scans run locally. Office chat also runs locally after you select a compatible GGUF model. Starting a Codex CLI or Claude Code CLI run uses that provider's service, so it generally needs a network connection and may incur provider charges.",
     },
     {
-      question: "Is Formative completely free and open source?",
+      question: "Is Formative open source, and can providers charge me?",
       answer:
-        "Yes. Formative is free software released under the permissive MIT license. There are no subscriptions, no token usage fees, and no feature paywalls.",
+        "Formative is MIT-licensed and has no Formative account, subscription, or paid feature gates. Codex or Claude usage is governed by your provider account and may have its own limits or charges.",
     },
     {
-      question: "Does Formative execute project code when scanning my files?",
+      question: "What project data is sent to a service?",
       answer:
-        "No. Formative uses fast static code analysis. It reads declarations and file imports without ever running code or installing packages, keeping your machine completely safe from untrusted scripts.",
+        "The local scans do not upload source files to Formative. When you start a provider run, the prompt and the context shown for that run may be sent to the provider. Review the selected project and task before starting.",
     },
     {
-      question: "What is the difference between the Installer and Portable versions?",
+      question: "Is a local AI model included?",
       answer:
-        "The Windows Setup Installer (.exe) sets up standard desktop shortcuts and start menu integration. The Standalone Portable (.exe) runs immediately from any folder or USB drive with zero installation and leaves no system registry entries.",
+        "No. GGUF weights are not in this repository or included in default Windows packages. In the desktop app, choose a compatible model file in Project Office. Formative copies it to local app data and runs it on this device. Model output can be inaccurate.",
     },
     {
-      question: "Can I control which files AI agents can modify?",
+      question: "Can the connected coding agent change my files?",
       answer:
-        "Yes. All CLI agent hooks (such as Claude Code and Codex) run under strict supervised sandboxing. Proposed file edits and diffs are shown in a visual inspector for your explicit approval before anything is written to disk.",
+        "The current Agent Chat workflow starts supported Codex CLI and Claude Code CLI runs in read-only mode. It does not offer write-enabled runs or a file-approval workflow. Provider tools and permissions can change, so check the provider status and current settings before each run.",
+    },
+    {
+      question: "Does the browser preview have access to local project files?",
+      answer:
+        "No. The browser preview can demonstrate renderer screens, but selecting local folders, importing transcripts, adding a model, and starting installed CLI agents require the Windows desktop app.",
     },
   ];
 
@@ -42,7 +47,7 @@ export const FaqSection: React.FC = () => {
           Common Questions
         </h2>
         <p className="mt-3 text-sm sm:text-base text-white/60 font-body font-light max-w-md mx-auto">
-          Everything you need to know about Formative's architecture, local AI, and privacy.
+          What runs locally, what uses a provider, and what is included in a release.
         </p>
       </div>
 
@@ -56,6 +61,8 @@ export const FaqSection: React.FC = () => {
             >
               <button
                 onClick={() => setOpenIndex(isOpen ? null : idx)}
+                aria-expanded={isOpen}
+                aria-controls={`faq-answer-${idx}`}
                 className="w-full p-5 sm:p-6 text-left flex items-center justify-between gap-4 cursor-pointer focus:outline-none"
               >
                 <span className="text-base sm:text-lg font-heading italic text-white tracking-tight">
@@ -74,7 +81,7 @@ export const FaqSection: React.FC = () => {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                   >
-                    <div className="px-5 sm:px-6 pb-6 text-xs sm:text-sm font-body font-light text-white/70 leading-relaxed border-t border-white/[0.04] pt-4">
+                    <div id={`faq-answer-${idx}`} className="px-5 sm:px-6 pb-6 text-xs sm:text-sm font-body font-light text-white/70 leading-relaxed border-t border-white/[0.04] pt-4">
                       {faq.answer}
                     </div>
                   </motion.div>

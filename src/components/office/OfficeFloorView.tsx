@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { Project, ProjectOfficeTeam, ThemeMode } from '../../types';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { OfficeMemberProfile, Project, ProjectOfficeTeam, ThemeMode } from '../../types';
 import type { AgentProviderId, AgentProviderStatus, AgentRun } from '../../types/agentRuns';
 import type { StartChatRun } from '../AgentChatView';
 import { extractConciseSpeech } from '../../utils/promptUtils';
 import { EmployeeSetupModal } from './EmployeeSetupModal';
+import { getOfficeTeamSignature } from './officeCast';
 import {
   Activity,
   Bot,
@@ -32,6 +33,7 @@ interface OfficeFloorViewProps {
   onSaveTeam: (team: ProjectOfficeTeam) => Promise<boolean>;
   onStartRun: (request: StartChatRun) => Promise<{ success: boolean; error?: string }>;
   onStopRun: (runId: string) => Promise<void>;
+  onLocalDialogueActivityChange: (activity: { projectName: string; employeeName: string; startedAt: string } | null) => void;
   openTeamSetupRequest?: boolean;
   onTeamSetupRequestHandled?: () => void;
   onOpenAgentChat?: (conversationId?: string, taskId?: string) => void;
@@ -75,6 +77,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
   onSaveTeam,
   onStartRun,
   onStopRun,
+  onLocalDialogueActivityChange,
   openTeamSetupRequest = false,
   onTeamSetupRequestHandled,
   onOpenAgentChat,
@@ -83,6 +86,9 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const portraitCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<ThreeOfficeInstance | null>(null);
+  const drawProfilePortrait = useCallback((profile: OfficeMemberProfile, targetCanvas: HTMLCanvasElement) => {
+    engineRef.current?.drawProfilePortrait(profile, targetCanvas);
+  }, []);
 
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [isUiHidden, setIsUiHidden] = useState(false);
@@ -101,6 +107,8 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
   const [chatPrompt, setChatPrompt] = useState('');
   const [isSubmittingChat, setIsSubmittingChat] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [localModelAvailable, setLocalModelAvailable] = useState<boolean | null>(null);
+  const [isInstallingLocalModel, setIsInstallingLocalModel] = useState(false);
   const chatStorageKey = project?.id ? `structra_office_chat_${project.id}` : null;
 
   const cleanOfficeChatHistory = (rawHistory: Record<string, any[]>): Record<string, Array<{ id: string; sender: 'user' | 'agent'; text: string; time: string }>> => {
@@ -170,6 +178,36 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
   const [resolution, setResolution] = useState(1);
   const [displayOptionsOpen, setDisplayOptionsOpen] = useState(false);
 
+  useEffect(() => {
+    let mounted = true;
+    const checkModel = window.formativeApi?.hasLocalOfficeLlm;
+    if (!checkModel) {
+      setLocalModelAvailable(false);
+      return () => { mounted = false; };
+    }
+    void checkModel().then((result) => {
+      if (mounted) setLocalModelAvailable(Boolean(result?.available));
+    }).catch(() => {
+      if (mounted) setLocalModelAvailable(false);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const handleChooseLocalModel = async () => {
+    if (!window.formativeApi?.selectLocalOfficeModel || isInstallingLocalModel) return;
+    setIsInstallingLocalModel(true);
+    setChatError(null);
+    try {
+      const result = await window.formativeApi.selectLocalOfficeModel();
+      if (result.success && result.available) setLocalModelAvailable(true);
+      else if (!result.cancelled) setChatError(result.error || 'Formative could not add that local model.');
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : 'Formative could not add that local model.');
+    } finally {
+      setIsInstallingLocalModel(false);
+    }
+  };
+
   const isLight = theme === 'light';
   const employees = useMemo(() => [team.ceo, ...team.employees.filter((employee) => employee.enabled)], [team]);
 
@@ -209,7 +247,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
       return next;
     });
     setChatError(null);
-    engineRef.current?.showSpeechBubble(partnerId, `Chat cleared! What's next?`, 4.0);
+    engineRef.current?.showSpeechBubble(partnerId, 'All right, fresh start.', 4.0);
   };
 
   const handleStartChatWithCeo = () => {
@@ -224,7 +262,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
     setSelectedPerson(null);
     setChatError(null);
     engineRef.current?.focusEmployee(partner.id, true);
-    engineRef.current?.showSpeechBubble(partner.id, `Hey! I'm ${partner.name}. What can I do?`, 5.0);
+    engineRef.current?.showSpeechBubble(partner.id, `Hey, I'm ${partner.name}. Nice to meet you.`, 5.0);
   };
 
   const handleStartChatWithPerson = (person: SelectedPerson) => {
@@ -240,15 +278,15 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
     setChatError(null);
     engineRef.current?.focusEmployee(partner.id, true);
 
-    let greeting = `Hey! I'm ${person.name}. What can I do?`;
+    let greeting = `Hey, I'm ${person.name}. Nice to meet you.`;
     if (person.role === 'reception') {
-      greeting = `Welcome to Structra! How can I help today?`;
+      greeting = `Hi, I'm ${person.name}. It's nice to meet you.`;
     } else if (person.role === 'sysadmin') {
-      greeting = `Server racks are running cool. What's up?`;
+      greeting = `Hey, I'm ${person.name}. I was just taking a little break.`;
     } else if (person.role === 'presenter') {
-      greeting = `Rehearsing the architecture walkthrough! Thoughts?`;
+      greeting = `Hi, I'm ${person.name}. Good to see a new face around here.`;
     } else if (person.role === 'visitor') {
-      greeting = `Hey there! Nice day in the neighborhood!`;
+      greeting = `Hey, I'm ${person.name}. Nice to meet you around here.`;
     }
     engineRef.current?.showSpeechBubble(partner.id, greeting, 5.0);
   };
@@ -256,6 +294,14 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
   const handleSendChatMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!chatPrompt.trim() || !activeChatTarget || isSubmittingChat) return;
+    if (!window.formativeApi?.generateOfficeDialogue) {
+      setChatError('Local office chat is available in the Formative desktop app.');
+      return;
+    }
+    if (localModelAvailable === false) {
+      setChatError('Add a compatible GGUF model to use local office chat.');
+      return;
+    }
 
     const promptText = chatPrompt.trim();
     const partner = activeChatTarget;
@@ -287,6 +333,11 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
     setChatPrompt('');
     setIsSubmittingChat(true);
     setChatError(null);
+    onLocalDialogueActivityChange({
+      projectName: project.name || 'Current project',
+      employeeName: partner.name,
+      startedAt: new Date().toISOString(),
+    });
 
     try {
       if (window.formativeApi?.generateOfficeDialogue) {
@@ -296,24 +347,11 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
           text: m.text,
         }));
 
-        const architecturalComponents = (project.nodes || [])
-          .map((n) => n.data?.label || n.label)
-          .filter((label: string) => Boolean(label) && !label.toLowerCase().includes('root'))
-          .slice(0, 6);
-
         const result = await window.formativeApi.generateOfficeDialogue({
           employee: {
             id: partner.id,
             name: partner.name,
             roleTitle: partner.roleTitle,
-            department: partner.department || 'general',
-            skills: partner.skills,
-          },
-          project: {
-            name: project.name || 'Current Project',
-            description: project.description,
-            type: project.type,
-            components: architecturalComponents,
           },
           history,
           prompt: promptText,
@@ -341,30 +379,13 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
           setChatError(errMsg);
           engineRef.current?.showSpeechBubble(partnerId, '...', 3.0);
         }
-      } else {
-        // Fallback when local LLM bridge is unavailable
-        const fallbackText = `Hey! I'm ${partner.name}, ${partner.roleTitle}. Great collaborating with you on ${project.name || 'the project'}!`;
-        engineRef.current?.showSpeechBubble(partnerId, fallbackText, 8.0);
-        const replyTime = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-        const fallbackMsg = { id: `agent-${Date.now()}`, sender: 'agent' as const, text: fallbackText, time: replyTime };
-        setChatMessages((prev) => {
-          const next = {
-            ...prev,
-            [partnerId]: [...(prev[partnerId] || []), fallbackMsg],
-          };
-          if (chatStorageKey) {
-            try {
-              localStorage.setItem(chatStorageKey, JSON.stringify(next));
-            } catch {}
-          }
-          return next;
-        });
       }
     } catch (err) {
       setChatError(err instanceof Error ? err.message : 'Could not generate response.');
       engineRef.current?.showSpeechBubble(partnerId, '...', 3.0);
     } finally {
       setIsSubmittingChat(false);
+      onLocalDialogueActivityChange(null);
     }
   };
 
@@ -495,7 +516,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
   }, [retryCount]);
 
   const teamSignature = useMemo(() => {
-    return `${team.ceo.id}:${team.ceo.name}:${team.employees.map((e) => `${e.id}:${e.name}:${e.enabled}:${e.department}`).join(';')}`;
+    return getOfficeTeamSignature(team);
   }, [team]);
 
   useEffect(() => {
@@ -807,7 +828,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
       </div>
 
       <div className={`flex min-h-8 shrink-0 items-center justify-between gap-4 border-t px-4 text-[11px] ${surface}`}>
-        <span className="truncate">{stats.floorCount} team members on the floor · Day {stats.day} · {stats.mode}</span>
+        <span className="truncate">{stats.floorCount} characters in scene · Day {stats.day} · {stats.mode}</span>
         <span className={secondaryText}>{isLive ? 'Using local time' : 'Scene clock'}</span>
       </div>
 
@@ -817,6 +838,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
         team={team}
         theme={theme}
         onSave={onSaveTeam}
+        drawProfilePortrait={drawProfilePortrait}
       />
       {/* In-Scene 3D Office Chat Box */}
       {activeChatTarget && !isUiHidden && (
@@ -840,7 +862,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
                 <div className="flex items-center gap-2">
                   <h4 className="truncate text-sm font-bold leading-tight text-zinc-900 dark:text-zinc-50">{activeChatTarget.name}</h4>
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border bg-zinc-800/80 border-zinc-700 text-zinc-300">
-                    In-Office
+                    Local AI
                   </span>
                 </div>
                 <p className={`truncate text-xs font-medium leading-tight mt-0.5 ${secondaryText}`}>{activeChatTarget.roleTitle}</p>
@@ -906,13 +928,31 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
             );
           })()}
 
+          {localModelAvailable === false && (
+            <div className={`px-3.5 py-2.5 border-b flex items-center justify-between gap-3 text-xs ${
+              isLight ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-amber-950/30 border-amber-900/50 text-amber-200'
+            }`}>
+              <span className="leading-relaxed">A local GGUF model is not installed. Model files are kept outside the app download.</span>
+              <button
+                type="button"
+                onClick={() => void handleChooseLocalModel()}
+                disabled={isInstallingLocalModel || !window.formativeApi?.selectLocalOfficeModel}
+                className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold shrink-0 disabled:opacity-50 ${
+                  isLight ? 'border-amber-300 bg-white hover:bg-amber-100' : 'border-amber-700 bg-amber-950/60 hover:bg-amber-900/60'
+                }`}
+              >
+                {isInstallingLocalModel ? 'Adding…' : 'Choose model'}
+              </button>
+            </div>
+          )}
+
           {/* Conversation History */}
           <div ref={chatScrollContainerRef} className="h-64 overflow-y-auto p-3.5 space-y-2.5 text-xs scroll-smooth">
             {(!chatMessages[activeChatTarget.id] || chatMessages[activeChatTarget.id].length === 0) ? (
               <div className={`text-center py-6 px-3 text-xs ${secondaryText} flex flex-col items-center gap-2`}>
                 <MessageSquareText className="w-5 h-5 text-zinc-500" />
                 <p className="leading-relaxed">
-                  Ask <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{activeChatTarget.name}</strong> anything. Responses appear directly in speech bubbles in the 3D office!
+                  Chat with <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{activeChatTarget.name}</strong> in character. This conversation only sees the messages you send; it cannot access project files, tasks, or agent activity.
                 </p>
               </div>
             ) : (
@@ -941,7 +981,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
             {isThinking && (
               <div className="flex items-center gap-2 text-xs text-orange-500 dark:text-orange-400 py-1.5 px-1 font-medium">
                 <span className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                <span>{activeChatTarget.name} is thinking...</span>
+                <span>Local model is replying to {activeChatTarget.name}…</span>
               </div>
             )}
             {chatError && (
@@ -973,7 +1013,7 @@ export const OfficeFloorView: React.FC<OfficeFloorViewProps> = ({
             />
             <button
               type="submit"
-              disabled={isThinking || !chatPrompt.trim()}
+              disabled={isThinking || !chatPrompt.trim() || localModelAvailable !== true}
               className={`h-9 px-4 rounded-xl text-xs font-semibold shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${primaryAction}`}
             >
               Send

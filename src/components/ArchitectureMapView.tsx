@@ -441,7 +441,6 @@ export const ArchitectureMapView: React.FC<ArchitectureMapViewProps> = ({ projec
                   minZoom={0.12}
                   maxZoom={1.8}
                   defaultEdgeOptions={{ type: 'smoothstep', style: { strokeWidth: 1.5 } }}
-                  proOptions={{ hideAttribution: true }}
                 >
                   <Background color={dark ? '#27272a' : '#e4e4e7'} gap={26} size={1} variant={BackgroundVariant.Dots} />
                   <Controls position="bottom-left" showInteractive={false} />

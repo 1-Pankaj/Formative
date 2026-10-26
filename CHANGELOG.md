@@ -1,18 +1,29 @@
 # Changelog
 
-All notable changes to Formative will be documented in this file.
+Notable changes to Formative are recorded here. This file follows the structure of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are released only when a tagged release is published.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [1.0.0] - 2026-10-26
+## [Unreleased]
 
 ### Added
-- **Interactive Architecture Canvas**: Editable node-and-edge visual workspace supporting frontend, gateway, backend, database, cache, queue, worker, and service nodes with automatic layout arrangement and drag-to-connect relationships.
-- **Source Architecture Map**: Static analysis pipeline that scans local project source files (JavaScript, TypeScript, Python, Go, Rust, Java, C#, PHP, Ruby), resolving module imports, framework route patterns (Next.js, Remix, SvelteKit, Nuxt, Astro), and database schema links.
-- **3D Project Office Floor**: Three.js isometric office environment with procedural character rendering, desk assignments, daytime/evening lighting cycles, real-time live clock, and camera panning.
-- **Local In-Office AI Colleague**: Integrated local language model runtime powered by quantized GGUF weights (`node-llama-cpp`). Enables immediate in-character desk conversations with office coordinators and teammates completely offline with zero external API dependencies.
-- **Agent CLI Telemetry**: Connects with locally installed CLI agents (Claude Code, Codex CLI), capturing live tool calls, file edits, thinking steps, and status traces in read-only mode.
-- **Task & Issue Tracker**: Project issue backlog supporting status progression (todo, in progress, blocked, done), assignees, and direct linking to agent execution sessions.
-- **Offline Data Persistence**: Project configurations, architecture diagrams, issue records, and conversation history persist locally in SQLite / local storage with automatic project switching.
-- **Windows Packaging**: Native NSIS installer and single-file portable executable configuration via Electron Builder.
+
+- Project workspaces with an editable architecture canvas, task list, and project overview.
+- Bounded local project structure scanning and a separate read-only source architecture map.
+- Read-only Agent Chat runs through supported Codex CLI and Claude Code CLI installations.
+- Transcript review for supported JSON and JSONL sources.
+- A project-scoped 3D office that reflects supported real agent-run activity.
+- Optional on-device office chat after the user selects a compatible GGUF model.
+- Persistent background activity for agent runs and local model replies.
+
+### Changed
+
+- Default Windows packaging excludes model weights. A user-selected model is stored in local app data; a private build may opt into bundling a model after checking its license and provenance.
+- Local project scanning does not execute project code. Provider runs are separate and may send the chosen prompt and bounded context to the provider service.
+
+### Fixed
+
+- Hardened Windows CLI argument handling for saved provider session IDs.
+- Kept local office chat limited to character roleplay, reduced small-model drift with bounded history and safer sampling, and added grounded responses for unsupported identity/date questions. Team Setup now previews the office engine's actual sprite and saved appearance/roster changes refresh the live scene.
+
+## Release status
+
+The package scripts define Windows installer and portable targets. This source changelog does not confirm that a specific binary has been built, tested, or published. See the [GitHub Releases page](https://github.com/1-Pankaj/Formative/releases) for published artifacts.

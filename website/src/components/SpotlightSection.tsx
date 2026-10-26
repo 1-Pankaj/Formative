@@ -10,77 +10,77 @@ export const SpotlightSection: React.FC = () => {
           Security & Privacy
         </div>
         <h2 className="text-4xl sm:text-6xl font-heading italic text-white tracking-[-3px] leading-[0.95]">
-          Your code never leaves your computer.
+          Know what stays local and what goes to a provider.
         </h2>
         <p className="mt-4 text-sm sm:text-base text-white/60 font-body font-light max-w-lg mx-auto">
-          Built for engineers who cannot risk proprietary codebase exposure to third-party cloud AI vendors.
+          Project scans happen on your device. Starting a provider run is a separate action with a separate data boundary.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: 100% Air-Gapped */}
+        {/* Card 1: local scans */}
         <CardSpotlight className="h-full flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/90 mb-6">
               <Icons.SecurityShield size={24} />
             </div>
             <div className="text-xs font-mono uppercase tracking-wider text-white/50 mb-2">
-              Privacy First
+              Local analysis
             </div>
             <h3 className="text-2xl font-heading italic text-white tracking-tight mb-3">
-              Zero Outbound Data
+              Project scans stay on-device
             </h3>
             <p className="text-xs sm:text-sm font-body font-light text-white/60 leading-relaxed">
-              Formative sends no telemetry, error logs, or source code to remote servers. No account setup, no cloud logins. Everything executes locally on your hardware.
+              The folder scan and architecture map read selected project files locally. They do not upload source files to Formative and do not execute project code.
             </p>
           </div>
           <div className="pt-6 mt-6 border-t border-white/[0.06] flex items-center justify-between text-xs text-white/50">
-            <span>Network: Offline</span>
-            <span className="text-white font-medium">100% Local</span>
+            <span>Project scan: local</span>
+            <span className="text-white font-medium">No code execution</span>
           </div>
         </CardSpotlight>
 
-        {/* Card 2: Supervised Agent Hooks */}
+        {/* Card 2: provider-run boundary */}
         <CardSpotlight className="h-full flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/90 mb-6">
               <Icons.AgentCli size={24} />
             </div>
             <div className="text-xs font-mono uppercase tracking-wider text-white/50 mb-2">
-              Autonomous Tools
+              Provider connection
             </div>
             <h3 className="text-2xl font-heading italic text-white tracking-tight mb-3">
-              Supervised Agent Tools
+              Read-only CLI runs
             </h3>
             <p className="text-xs sm:text-sm font-body font-light text-white/60 leading-relaxed">
-              Supervise Claude Code and Codex CLI commands with strict read-only execution modes and user confirmation before any file modification occurs.
+              Formative can start supported Codex CLI and Claude Code CLI runs in read-only mode. Your prompt and selected project context may be sent to the provider service and may incur provider charges.
             </p>
           </div>
           <div className="pt-6 mt-6 border-t border-white/[0.06] flex items-center justify-between text-xs text-white/50">
-            <span>Permissions: Supervised</span>
-            <span className="text-white font-medium">Sandboxed</span>
+            <span>Codex CLI · Claude Code CLI</span>
+            <span className="text-white font-medium">Provider terms apply</span>
           </div>
         </CardSpotlight>
 
-        {/* Card 3: Windows Native Exe */}
+        {/* Card 3: optional local model */}
         <CardSpotlight className="h-full flex flex-col justify-between">
           <div>
             <div className="w-12 h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/90 mb-6">
               <Icons.Windows size={24} />
             </div>
             <div className="text-xs font-mono uppercase tracking-wider text-white/50 mb-2">
-              Standalone Desktop App
+              Optional local feature
             </div>
             <h3 className="text-2xl font-heading italic text-white tracking-tight mb-3">
-              Single-File Executable
+              Bring a GGUF model
             </h3>
             <p className="text-xs sm:text-sm font-body font-light text-white/60 leading-relaxed">
-              Available as a Windows setup installer and a standalone portable .exe. Both packages embed the 270 MB SmolLM2 model weights for immediate offline operation.
+              Model weights are not in the repository or default Windows packages. Choose a compatible file in Project Office; Formative copies it to local app data and runs it on this device.
             </p>
           </div>
           <div className="pt-6 mt-6 border-t border-white/[0.06] flex items-center justify-between text-xs text-white/50">
-            <span>Version: v1.0.0</span>
-            <span className="text-white font-medium">Windows 10 / 11</span>
+            <span>Not bundled by default</span>
+            <span className="text-white font-medium">Responses may be inaccurate</span>
           </div>
         </CardSpotlight>
       </div>

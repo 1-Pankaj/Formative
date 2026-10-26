@@ -92,25 +92,12 @@ declare global {
           id: string;
           name: string;
           roleTitle: string;
-          department?: string;
-          skills?: string[];
-          assignedTasks?: string[];
-          activeRun?: {
-            providerId: string;
-            status: string;
-            taskTitle?: string;
-          } | null;
-        };
-        project: {
-          name: string;
-          description?: string;
-          type?: string;
-          components?: string[];
-          activeTasks?: string[];
         };
         history?: Array<{ sender: 'user' | 'agent'; text: string }>;
         prompt: string;
       }) => Promise<{ success: boolean; text?: string; error?: string; employeeId?: string; employeeName?: string }>;
+      hasLocalOfficeLlm?: () => Promise<{ available: boolean }>;
+      selectLocalOfficeModel?: () => Promise<{ success: boolean; available?: boolean; cancelled?: boolean; error?: string }>;
       onAgentRunEvent: (cb: (payload: AgentRunStreamEvent) => void) => () => void;
     };
   }
@@ -124,6 +111,13 @@ interface ToastAction {
 interface ToastState {
   text: string;
   action?: ToastAction;
+}
+
+interface LocalOfficeActivity {
+  projectId: string;
+  projectName: string;
+  employeeName: string;
+  startedAt: string;
 }
 
 const createLocalId = (prefix: string) => {
@@ -209,6 +203,7 @@ export const App: React.FC = () => {
   const [rawAgentSteps, setRawAgentSteps] = useState<AgentTranscriptStep[]>([]);
   const [agentProviderStatuses, setAgentProviderStatuses] = useState<AgentProviderStatus[]>([]);
   const [isCheckingAgentProviders, setIsCheckingAgentProviders] = useState(false);
+  const [localOfficeActivity, setLocalOfficeActivity] = useState<LocalOfficeActivity | null>(null);
 
   const [toastMessage, setToastMessage] = useState<ToastState | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
@@ -246,6 +241,12 @@ export const App: React.FC = () => {
       ['queued', 'starting', 'running', 'waiting_for_approval', 'stopping'].includes(run.status)
     );
   }, [activeProject?.agentRuns]);
+
+  const backgroundRuns = useMemo(() => projects.flatMap((project) =>
+    (project.agentRuns || [])
+      .filter((run) => ['queued', 'starting', 'running', 'waiting_for_approval', 'stopping'].includes(run.status))
+      .map((run) => ({ project, run }))
+  ), [projects]);
 
   const activeProviderName = useMemo(() => {
     if (!activeRuns.length) return '';
@@ -565,10 +566,10 @@ export const App: React.FC = () => {
     }
   }, [activeProjectId, persistProjects]);
 
-  const handleStopAgentRun = useCallback(async (runId: string) => {
-    if (!window.formativeApi || !activeProjectId) return;
+  const handleStopAgentRun = useCallback(async (runId: string, projectId = activeProjectId) => {
+    if (!window.formativeApi || !projectId) return;
     try {
-      const result = await window.formativeApi.stopAgentRun({ projectId: activeProjectId, runId });
+      const result = await window.formativeApi.stopAgentRun({ projectId, runId });
       if (!result.success) showToast(result.error || 'Formative could not stop this run.');
       else if (!result.stopped) showToast('This agent run is no longer active.');
     } catch (error) {
@@ -1616,6 +1617,10 @@ export const App: React.FC = () => {
               onSaveTeam={handleSaveOfficeTeam}
               onStartRun={handleStartAgentRun}
               onStopRun={handleStopAgentRun}
+              onLocalDialogueActivityChange={(activity) => setLocalOfficeActivity(activity ? {
+                ...activity,
+                projectId: activeProject.id,
+              } : null)}
               openTeamSetupRequest={isTeamSetupRequested}
               onTeamSetupRequestHandled={() => setIsTeamSetupRequested(false)}
               onOpenAgentChat={(conversationId, taskId) => {
@@ -1797,17 +1802,30 @@ export const App: React.FC = () => {
           onLoadTemplate={handleLoadTemplate}
         />
 
-        {activeProject && viewMode !== 'agent-chat' && (
+        {(backgroundRuns.length > 0 || Boolean(localOfficeActivity)) && (
           <AgentRunDock
-            runs={activeRuns}
-            project={activeProject}
+            runs={backgroundRuns}
+            localActivity={localOfficeActivity || undefined}
+            isChatView={viewMode === 'agent-chat'}
             theme={theme}
-            onOpenRun={(conversationId, taskId) => {
+            onOpenRun={async (conversationId, taskId, projectId) => {
+              if (projectId && projectId !== activeProjectId) {
+                const saved = await flushCanvasChanges();
+                if (!saved) {
+                  showToast('Recent project changes could not be saved. Try again before switching.');
+                  return;
+                }
+                clearActiveTranscript();
+                setActiveProjectId(projectId);
+                localStorage.setItem('formative_active_project_id', projectId);
+                setViewMode('agent-chat');
+              } else {
+                void requestViewMode('agent-chat');
+              }
               if (conversationId) setRequestedAgentConversationId(conversationId);
               if (taskId) setRequestedAgentTaskId(taskId);
-              void requestViewMode('agent-chat');
             }}
-            onStopRun={handleStopAgentRun}
+            onStopRun={(runId, projectId) => handleStopAgentRun(runId, projectId)}
           />
         )}
 

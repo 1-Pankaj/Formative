@@ -36,7 +36,7 @@ win-unpacked/
 *.7z
 *.msi
 
-# Large Language Model Weights (Bundled directly into production executables via electron-builder)
+# Optional local Large Language Model weights; excluded from Git and default packages
 *.gguf
 llm/*.gguf
 LLM/*.gguf

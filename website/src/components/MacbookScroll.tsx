@@ -11,11 +11,11 @@ export const MacbookScroll: React.FC = () => {
         title={
           <div className="flex flex-col items-center">
             <span className="font-heading italic text-4xl sm:text-6xl lg:text-7xl tracking-[-3px] text-white leading-[0.95] max-w-4xl mx-auto block">
-              Every system, agent, and diagram.{'\n'}
-              <span className="text-white/60">Live on your screen.</span>
+              Keep project context together.{'\n'}
+              <span className="text-white/60">See the current workspace.</span>
             </span>
             <p className="mt-4 text-sm sm:text-base text-white/60 font-body font-light max-w-lg mx-auto">
-              Open any repository to generate an interactive visual map and coordinate local AI teammates.
+              Review the project overview, editable canvas, tasks, source map, and supported agent conversations in one desktop workspace.
             </p>
           </div>
         }

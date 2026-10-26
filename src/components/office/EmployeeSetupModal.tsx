@@ -14,12 +14,10 @@ import {
 import { useOfficeModalAccessibility } from './useOfficeModalAccessibility';
 import {
   Activity,
-  Bot,
   Brain,
   Building2,
   Check,
   Code,
-  Crown,
   Database,
   FileText,
   LayoutGrid,
@@ -31,7 +29,6 @@ import {
   ShieldCheck,
   Sliders,
   Smartphone,
-  Sparkles,
   Trash2,
   User,
   X,
@@ -44,20 +41,21 @@ interface EmployeeSetupModalProps {
   team: ProjectOfficeTeam;
   theme: ThemeMode;
   onSave: (team: ProjectOfficeTeam) => Promise<boolean>;
+  drawProfilePortrait: (profile: OfficeMemberProfile, targetCanvas: HTMLCanvasElement) => void;
 }
 
 const DEPARTMENT_META: Record<OfficeDepartment, { label: string; badgeClass: string; icon: React.ComponentType<{ className?: string }> }> = {
-  frontend: { label: 'Frontend', badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20', icon: LayoutGrid },
-  backend: { label: 'Backend', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icon: Code },
-  mobile: { label: 'Mobile', badgeClass: 'bg-sky-500/10 text-sky-400 border-sky-500/20', icon: Smartphone },
-  qa: { label: 'QA & Test', badgeClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: ShieldCheck },
-  database: { label: 'Data & DB', badgeClass: 'bg-amber-700/10 text-amber-500 border-amber-700/20', icon: Database },
-  devops: { label: 'DevOps & Cloud', badgeClass: 'bg-slate-500/10 text-slate-300 border-slate-500/20', icon: Server },
-  design: { label: 'Design & UI', badgeClass: 'bg-rose-500/10 text-rose-400 border-rose-500/20', icon: Sparkles },
-  security: { label: 'Security', badgeClass: 'bg-red-500/10 text-red-400 border-red-500/20', icon: Shield },
-  ai: { label: 'AI & ML', badgeClass: 'bg-purple-500/10 text-purple-400 border-purple-500/20', icon: Brain },
-  docs: { label: 'Docs', badgeClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', icon: FileText },
-  analytics: { label: 'Performance', badgeClass: 'bg-orange-500/10 text-orange-400 border-orange-500/20', icon: Activity },
+  frontend: { label: 'Frontend', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: LayoutGrid },
+  backend: { label: 'Backend', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Code },
+  mobile: { label: 'Mobile', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Smartphone },
+  qa: { label: 'QA & Test', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: ShieldCheck },
+  database: { label: 'Data & DB', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Database },
+  devops: { label: 'DevOps & Cloud', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Server },
+  design: { label: 'Design & UI', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: LayoutGrid },
+  security: { label: 'Security', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Shield },
+  ai: { label: 'AI & ML', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Brain },
+  docs: { label: 'Docs', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: FileText },
+  analytics: { label: 'Performance', badgeClass: 'bg-white/[0.04] text-zinc-400 border-white/[0.08]', icon: Activity },
   general: { label: 'General', badgeClass: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20', icon: Layers },
 };
 
@@ -101,140 +99,27 @@ const PROVIDER_OPTIONS: Array<{ id: AgentProviderId | ''; label: string }> = [
   { id: 'mcp', label: 'MCP Service' },
 ];
 
-/** Pixel-art SVG avatar preview rendered in real-time */
-const PixelAvatarPreview: React.FC<{ appearance?: Partial<OfficeMemberProfile['appearance']>; name?: string }> = ({ appearance, name }) => {
-  const {
-    skin = '#f6d2b8',
-    hair = '#18181b',
-    shirt = '#2a3550',
-    pants = '#23262e',
-    hairStyle = 'short',
-    glasses = false,
-    headset = false,
-    suit = false,
-    tie = '#c8483e',
-    cap = '#2563eb',
-  } = appearance || {};
+/** The preview uses the office engine's own sprite renderer for a true match. */
+const PixelAvatarPreview: React.FC<{
+  profile: OfficeMemberProfile;
+  drawProfilePortrait: (profile: OfficeMemberProfile, targetCanvas: HTMLCanvasElement) => void;
+}> = ({ profile, drawProfilePortrait }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) drawProfilePortrait(profile, canvas);
+  }, [profile, drawProfilePortrait]);
 
   return (
-    <svg viewBox="0 0 32 44" className="w-16 h-22 sm:w-20 sm:h-28 [image-rendering:pixelated] drop-shadow-md select-none" shapeRendering="crispEdges">
-      {/* Background shadow disk */}
-      <ellipse cx="16" cy="42" rx="10" ry="2" fill="rgba(0,0,0,0.18)" />
-
-      {/* Shoes */}
-      <rect x="9" y="39" width="5" height="2" fill="#18181b" />
-      <rect x="18" y="39" width="5" height="2" fill="#18181b" />
-
-      {/* Pants / Legs */}
-      <rect x="10" y="29" width="4" height="10" fill={pants} />
-      <rect x="18" y="29" width="4" height="10" fill={pants} />
-
-      {/* Torso / Shirt */}
-      <rect x="9" y="19" width="14" height="11" fill={suit ? '#1a1a20' : shirt} />
-
-      {/* Suit Jacket Overlay */}
-      {suit && (
-        <>
-          <rect x="8" y="19" width="4" height="10" fill={shirt} />
-          <rect x="20" y="19" width="4" height="10" fill={shirt} />
-          <polygon points="9,19 12,28 14,19" fill="#ffffff" />
-          {/* Tie */}
-          <polygon points="15,20 17,20 17.5,27 16,29 14.5,27" fill={tie} />
-        </>
-      )}
-
-      {/* Arms & Hands */}
-      <rect x="6" y="20" width="3" height="8" fill={shirt} />
-      <rect x="23" y="20" width="3" height="8" fill={shirt} />
-      <rect x="6" y="28" width="3" height="2" fill={skin} />
-      <rect x="23" y="28" width="3" height="2" fill={skin} />
-
-      {/* Neck */}
-      <rect x="14" y="17" width="4" height="3" fill={skin} />
-
-      {/* Head / Face */}
-      <rect x="10" y="7" width="12" height="11" fill={skin} />
-      {/* Ears */}
-      <rect x="9" y="11" width="1" height="3" fill={skin} />
-      <rect x="22" y="11" width="1" height="3" fill={skin} />
-
-      {/* Eyes */}
-      <rect x="12" y="11" width="2" height="2" fill="#1e293b" />
-      <rect x="18" y="11" width="2" height="2" fill="#1e293b" />
-
-      {/* Glasses */}
-      {glasses && (
-        <>
-          <rect x="11" y="10" width="4" height="4" fill="none" stroke="#09090b" strokeWidth="1" />
-          <rect x="17" y="10" width="4" height="4" fill="none" stroke="#09090b" strokeWidth="1" />
-          <line x1="15" y1="12" x2="17" y2="12" stroke="#09090b" strokeWidth="1" />
-        </>
-      )}
-
-      {/* Hair Styles */}
-      {hairStyle === 'short' && (
-        <>
-          <rect x="9" y="5" width="14" height="4" fill={hair} />
-          <rect x="9" y="8" width="2" height="3" fill={hair} />
-          <rect x="21" y="8" width="2" height="3" fill={hair} />
-        </>
-      )}
-      {hairStyle === 'curly' && (
-        <>
-          <rect x="8" y="4" width="16" height="5" fill={hair} />
-          <rect x="7" y="7" width="3" height="4" fill={hair} />
-          <rect x="22" y="7" width="3" height="4" fill={hair} />
-        </>
-      )}
-      {hairStyle === 'buzz' && (
-        <rect x="10" y="6" width="12" height="2" fill={hair} />
-      )}
-      {hairStyle === 'messy' && (
-        <>
-          <polygon points="8,5 14,3 18,5 24,3 23,8 9,8" fill={hair} />
-          <rect x="8" y="7" width="3" height="4" fill={hair} />
-          <rect x="21" y="7" width="3" height="4" fill={hair} />
-        </>
-      )}
-      {hairStyle === 'ponytail' && (
-        <>
-          <rect x="9" y="5" width="14" height="4" fill={hair} />
-          <rect x="9" y="8" width="2" height="3" fill={hair} />
-          <rect x="23" y="7" width="3" height="7" fill={hair} />
-        </>
-      )}
-      {hairStyle === 'long' && (
-        <>
-          <rect x="9" y="5" width="14" height="4" fill={hair} />
-          <rect x="8" y="8" width="3" height="10" fill={hair} />
-          <rect x="21" y="8" width="3" height="10" fill={hair} />
-        </>
-      )}
-      {hairStyle === 'bun' && (
-        <>
-          <circle cx="16" cy="3" r="3" fill={hair} />
-          <rect x="9" y="5" width="14" height="4" fill={hair} />
-          <rect x="9" y="8" width="2" height="3" fill={hair} />
-          <rect x="21" y="8" width="2" height="3" fill={hair} />
-        </>
-      )}
-      {hairStyle === 'cap' && (
-        <>
-          <rect x="8" y="5" width="16" height="4" fill={cap || shirt} />
-          <rect x="6" y="9" width="10" height="2" fill={cap || shirt} />
-        </>
-      )}
-
-      {/* Headset Comms */}
-      {headset && (
-        <>
-          <path d="M 8 13 A 8 8 0 0 1 24 13" fill="none" stroke="#2563eb" strokeWidth="1.5" />
-          <rect x="7" y="11" width="3" height="4" rx="1" fill="#1d4ed8" />
-          <rect x="22" y="11" width="3" height="4" rx="1" fill="#1d4ed8" />
-          <line x1="10" y1="14" x2="13" y2="16" stroke="#93c5fd" strokeWidth="1" />
-        </>
-      )}
-    </svg>
+    <canvas
+      ref={canvasRef}
+      width={64}
+      height={96}
+      role="img"
+      aria-label={`${profile.name} character appearance`}
+      className="h-full w-full select-none object-contain [image-rendering:pixelated]"
+    />
   );
 };
 
@@ -279,7 +164,7 @@ class OfficeModalErrorBoundary extends React.Component<ErrorBoundaryProps, Error
                   this.setState({ hasError: false, error: null });
                   this.props.onReset();
                 }}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-500 transition-colors"
+                className="px-3.5 py-1.5 rounded-lg bg-white text-xs font-semibold text-zinc-950 transition-colors hover:bg-zinc-200"
               >
                 Reset to Default Roster
               </button>
@@ -327,7 +212,7 @@ function sanitizeTeam(team?: Partial<ProjectOfficeTeam> | null): ProjectOfficeTe
   };
 }
 
-export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, onClose, team, theme, onSave }) => {
+export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, onClose, team, theme, onSave, drawProfilePortrait }) => {
   const isDark = theme !== 'light';
   const initialCleanTeam = useMemo(() => sanitizeTeam(team), [team]);
   const [draft, setDraft] = useState<ProjectOfficeTeam>(() => initialCleanTeam);
@@ -363,8 +248,6 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
   }, [selectedId, draft, initialCleanTeam.ceo]);
 
   const isSelectedCeo = selectedProfile.id === draft.ceo?.id;
-
-  if (!isOpen) return null;
 
   const currentSkills = Array.isArray(selectedProfile.skills) ? selectedProfile.skills : [];
   const currentAppearance = selectedProfile.appearance || DEFAULT_CEO_PROFILE.appearance;
@@ -510,12 +393,14 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
 
   const activeInOfficeCount = draft.employees.filter((e) => e.enabled).length + 1; // +1 for CEO
 
+  if (!isOpen) return null;
+
   // Styling helpers
   const bgMain = isDark ? 'bg-[#0c0d11] text-zinc-100' : 'bg-white text-zinc-900';
   const bgSidebar = isDark ? 'bg-[#121318] border-[#22232a]' : 'bg-zinc-50 border-zinc-200';
   const borderCol = isDark ? 'border-[#22232a]' : 'border-zinc-200';
   const cardBg = isDark ? 'bg-[#16171e]' : 'bg-white';
-  const inputBg = isDark ? 'bg-[#191a22] border-[#2d2e38] text-zinc-100 focus:border-emerald-500' : 'bg-white border-zinc-300 text-zinc-900 focus:border-emerald-600';
+  const inputBg = isDark ? 'bg-[#191a22] border-[#2d2e38] text-zinc-100 focus:border-zinc-400' : 'bg-white border-zinc-300 text-zinc-900 focus:border-zinc-700';
   const subtleText = isDark ? 'text-zinc-400' : 'text-zinc-500';
 
   return (
@@ -535,18 +420,16 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
           {/* Modal Top Header */}
           <header className={`flex shrink-0 items-center justify-between border-b px-6 py-4 ${bgSidebar}`}>
             <div className="flex items-center gap-3">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}>
-                <Bot className="h-5 w-5" />
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-100 text-zinc-700'}`}>
+                <Building2 className="h-4 w-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2.5">
                   <h2 id="office-team-modal-title" className="text-base font-bold tracking-tight">Team Setup & Office Roster</h2>
-                  <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                    {activeInOfficeCount} in office
-                  </span>
+                  <span className={`text-[11px] font-medium ${subtleText}`}>{activeInOfficeCount} in office</span>
                 </div>
                 <p className={`text-xs mt-0.5 ${subtleText}`}>
-                  Assemble your specialized engineering office. Configure agent roles, visual styling, and dispatch routing.
+                  Choose who appears in this project’s office and adjust each teammate’s details.
                 </p>
               </div>
             </div>
@@ -554,6 +437,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
               type="button"
               onClick={onClose}
               disabled={saving}
+              aria-label="Close team setup"
               className={`rounded-lg p-1.5 transition-colors ${isDark ? 'text-zinc-400 hover:bg-zinc-800 hover:text-white' : 'text-zinc-500 hover:bg-zinc-200 hover:text-black'}`}
             >
               <X className="h-4 w-4" />
@@ -583,7 +467,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                     type="button"
                     onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
                     disabled={draft.employees.length >= MAX_OFFICE_EMPLOYEES}
-                    className="flex h-8 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={`flex h-8 w-full items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isDark ? 'bg-white text-zinc-950 hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-700'}`}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Add Teammate</span>
@@ -626,10 +510,10 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                 <div
                   onClick={() => setSelectedId(draft.ceo.id)}
                   className={`group cursor-pointer rounded-xl border p-3 transition-all relative ${
-                    selectedId === draft.ceo.id
+                      selectedId === draft.ceo.id
                       ? isDark
-                        ? 'border-amber-500/50 bg-amber-500/10 shadow-sm'
-                        : 'border-amber-400 bg-amber-50/70 shadow-sm'
+                        ? 'border-white/30 bg-white/[0.05]'
+                        : 'border-zinc-500 bg-zinc-100'
                       : isDark
                       ? 'border-zinc-800 hover:border-zinc-700 bg-[#16171f]'
                       : 'border-zinc-200 hover:border-zinc-300 bg-white'
@@ -637,15 +521,14 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative shrink-0">
-                      <div className="h-10 w-10 rounded-xl overflow-hidden bg-black/20 flex items-center justify-center border border-amber-500/30">
-                        <PixelAvatarPreview appearance={draft.ceo.appearance} name={draft.ceo.name} />
+                      <div className={`h-10 w-10 rounded-lg overflow-hidden flex items-center justify-center border ${isDark ? 'bg-black/20 border-white/10' : 'bg-zinc-100 border-zinc-200'}`}>
+                        <PixelAvatarPreview profile={draft.ceo} drawProfilePortrait={drawProfilePortrait} />
                       </div>
-                      <Crown className="absolute -top-1 -right-1 h-3.5 w-3.5 text-amber-400 drop-shadow" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <span className="truncate text-xs font-bold">{draft.ceo.name}</span>
-                        <span className="text-[9px] font-extrabold text-amber-500 uppercase tracking-wider bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">
                           Coordinator
                         </span>
                       </div>
@@ -662,7 +545,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
 
                   {draft.employees.length === 0 ? (
                     <div className={`rounded-xl border border-dashed p-4 text-center text-xs ${borderCol} ${subtleText}`}>
-                      No employees added. Click <span className="font-bold text-emerald-400">+ Add Teammate</span> to build your office roster.
+                      No employees added. Use <span className="font-medium text-zinc-200">Add Teammate</span> to build your office roster.
                     </div>
                   ) : (
                     <div className="space-y-1.5">
@@ -678,8 +561,8 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                             className={`group cursor-pointer rounded-xl border p-2.5 transition-all relative ${
                               isSelected
                                 ? isDark
-                                  ? 'border-emerald-500/60 bg-emerald-500/10 shadow-sm'
-                                  : 'border-emerald-500 bg-emerald-50/70 shadow-sm'
+                                  ? 'border-white/30 bg-white/[0.05]'
+                                  : 'border-zinc-500 bg-zinc-100'
                                 : isDark
                                 ? 'border-[#22232a] hover:border-zinc-700 bg-[#16171f]'
                                 : 'border-zinc-200 hover:border-zinc-300 bg-white'
@@ -688,13 +571,13 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                             <div className="flex items-center gap-2.5">
                               {/* Avatar swatch */}
                               <div className="h-8 w-8 rounded-lg overflow-hidden bg-black/20 flex items-center justify-center shrink-0 border border-white/5">
-                                <PixelAvatarPreview appearance={emp.appearance} name={emp.name} />
+                                <PixelAvatarPreview profile={emp} drawProfilePortrait={drawProfilePortrait} />
                               </div>
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between">
                                   <span className="truncate text-xs font-bold">{emp.name || 'Unnamed'}</span>
-                                  <span className={`h-2 w-2 rounded-full shrink-0 ${emp.enabled ? 'bg-emerald-500' : 'bg-zinc-500'}`} title={emp.enabled ? 'In office' : 'Away'} />
+                                  <span className={`shrink-0 text-[10px] ${subtleText}`}>{emp.enabled ? 'In office' : 'Away'}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className={`text-[8px] font-extrabold uppercase px-1 py-0.2 rounded border ${deptMeta.badgeClass}`}>
@@ -733,14 +616,14 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                 <div className="flex items-center gap-4 min-w-0">
                   {/* 2D Pixel Avatar Preview */}
                   <div className={`h-20 w-20 rounded-2xl border flex items-center justify-center p-2 shadow-inner shrink-0 ${isDark ? 'bg-[#0a0a0d] border-zinc-800' : 'bg-white border-zinc-200'}`}>
-                    <PixelAvatarPreview appearance={currentAppearance} name={selectedProfile.name} />
+                    <PixelAvatarPreview profile={selectedProfile} drawProfilePortrait={drawProfilePortrait} />
                   </div>
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-bold truncate">{selectedProfile.name}</h3>
                       {isSelectedCeo ? (
-                        <span className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-extrabold text-amber-400 uppercase tracking-wider">
+                        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
                           Project Coordinator
                         </span>
                       ) : (
@@ -751,9 +634,8 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                     </div>
                     <p className={`text-xs mt-0.5 ${subtleText}`}>{selectedProfile.roleTitle}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${selectedProfile.enabled ? 'text-emerald-400' : subtleText}`}>
-                        <span className={`h-2 w-2 rounded-full ${selectedProfile.enabled ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
-                        {selectedProfile.enabled ? 'Active on Office Floor' : 'Away / Off-duty'}
+                      <span className={`text-[11px] font-medium ${subtleText}`}>
+                        {selectedProfile.enabled ? 'In office' : 'Away'}
                       </span>
                     </div>
                   </div>
@@ -769,7 +651,6 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                     }`}
                     title="Randomize style palette"
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                     <span>Randomize Look</span>
                   </button>
                   <button
@@ -792,7 +673,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                   onClick={() => setActiveTab('identity')}
                   className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
                     activeTab === 'identity'
-                      ? 'border-emerald-500 text-emerald-400'
+                      ? 'border-white text-white'
                       : `border-transparent ${subtleText} hover:text-zinc-200`
                   }`}
                 >
@@ -804,7 +685,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                   onClick={() => setActiveTab('appearance')}
                   className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
                     activeTab === 'appearance'
-                      ? 'border-emerald-500 text-emerald-400'
+                      ? 'border-white text-white'
                       : `border-transparent ${subtleText} hover:text-zinc-200`
                   }`}
                 >
@@ -816,7 +697,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                   onClick={() => setActiveTab('presence')}
                   className={`py-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
                     activeTab === 'presence'
-                      ? 'border-emerald-500 text-emerald-400'
+                      ? 'border-white text-white'
                       : `border-transparent ${subtleText} hover:text-zinc-200`
                   }`}
                 >
@@ -869,7 +750,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                                 onClick={() => updateCurrentProfile({ department: dept })}
                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-bold text-left transition-all ${
                                   isSelectedDept
-                                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-sm'
+                                    ? isDark ? 'bg-white/[0.06] border-white/40 text-white' : 'bg-zinc-100 border-zinc-500 text-zinc-900'
                                     : isDark
                                     ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
                                     : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300'
@@ -914,13 +795,13 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                           currentSkills.map((skill) => (
                             <span
                               key={skill}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium ${isDark ? 'bg-white/[0.05] text-zinc-200 border-white/10' : 'bg-zinc-100 text-zinc-800 border-zinc-200'}`}
                             >
                               <span>{skill}</span>
                               <button
                                 type="button"
                                 onClick={() => removeSkill(skill)}
-                                className="text-emerald-400/60 hover:text-emerald-300"
+                                className="text-zinc-500 hover:text-white"
                               >
                                 <X className="h-3 w-3" />
                               </button>
@@ -969,8 +850,8 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                                 onClick={() => addSkill(sugg)}
                                 className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
                                   isDark
-                                    ? 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-400'
-                                    : 'border-zinc-200 bg-white text-zinc-600 hover:border-emerald-500 hover:text-emerald-700'
+                                    ? 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-100'
+                                    : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-400 hover:text-zinc-900'
                                 }`}
                               >
                                 + {sugg}
@@ -999,7 +880,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                               onClick={() => updateCurrentAppearance({ hairStyle: val })}
                               className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
                                 isSelectedStyle
-                                  ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-sm'
+                                  ? isDark ? 'bg-white/[0.06] border-white/40 text-white' : 'bg-zinc-100 border-zinc-500 text-zinc-900'
                                   : isDark
                                   ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
                                   : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300'
@@ -1035,7 +916,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                               className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
                               style={{
                                 backgroundColor: pal.hex,
-                                borderColor: currentAppearance.skin === pal.hex ? '#10b981' : 'transparent',
+                                borderColor: currentAppearance.skin === pal.hex ? (isDark ? '#e4e4e7' : '#18181b') : 'transparent',
                               }}
                               title={pal.label}
                             >
@@ -1066,7 +947,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                               className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
                               style={{
                                 backgroundColor: pal.hex,
-                                borderColor: currentAppearance.hair === pal.hex ? '#10b981' : 'transparent',
+                                borderColor: currentAppearance.hair === pal.hex ? (isDark ? '#e4e4e7' : '#18181b') : 'transparent',
                               }}
                               title={pal.label}
                             >
@@ -1097,7 +978,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                               className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
                               style={{
                                 backgroundColor: pal.hex,
-                                borderColor: currentAppearance.shirt === pal.hex ? '#10b981' : 'transparent',
+                                borderColor: currentAppearance.shirt === pal.hex ? (isDark ? '#e4e4e7' : '#18181b') : 'transparent',
                               }}
                               title={pal.label}
                             >
@@ -1128,7 +1009,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                               className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
                               style={{
                                 backgroundColor: pal.hex,
-                                borderColor: currentAppearance.pants === pal.hex ? '#10b981' : 'transparent',
+                                borderColor: currentAppearance.pants === pal.hex ? (isDark ? '#e4e4e7' : '#18181b') : 'transparent',
                               }}
                               title={pal.label}
                             >
@@ -1160,7 +1041,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                                 className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
                                 style={{
                                   backgroundColor: pal.hex,
-                                  borderColor: currentAppearance.tie === pal.hex ? '#10b981' : 'transparent',
+                                  borderColor: currentAppearance.tie === pal.hex ? (isDark ? '#e4e4e7' : '#18181b') : 'transparent',
                                 }}
                                 title={pal.label}
                               >
@@ -1178,53 +1059,53 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {/* Glasses */}
                         <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
-                          currentAppearance.glasses ? 'bg-emerald-500/10 border-emerald-500/50' : `${cardBg} ${borderCol}`
+                          currentAppearance.glasses ? (isDark ? 'bg-white/[0.06] border-white/30' : 'bg-zinc-100 border-zinc-400') : `${cardBg} ${borderCol}`
                         }`}>
                           <span className="text-xs font-bold">Glasses</span>
                           <input
                             type="checkbox"
                             checked={Boolean(currentAppearance.glasses)}
                             onChange={(e) => updateCurrentAppearance({ glasses: e.target.checked })}
-                            className="h-4 w-4 accent-emerald-500 rounded"
+                            className="h-4 w-4 accent-white rounded"
                           />
                         </label>
 
                         {/* Headset */}
                         <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
-                          currentAppearance.headset ? 'bg-emerald-500/10 border-emerald-500/50' : `${cardBg} ${borderCol}`
+                          currentAppearance.headset ? (isDark ? 'bg-white/[0.06] border-white/30' : 'bg-zinc-100 border-zinc-400') : `${cardBg} ${borderCol}`
                         }`}>
                           <span className="text-xs font-bold">Headset</span>
                           <input
                             type="checkbox"
                             checked={Boolean(currentAppearance.headset)}
                             onChange={(e) => updateCurrentAppearance({ headset: e.target.checked })}
-                            className="h-4 w-4 accent-emerald-500 rounded"
+                            className="h-4 w-4 accent-white rounded"
                           />
                         </label>
 
                         {/* Suit Jacket */}
                         <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
-                          currentAppearance.suit ? 'bg-emerald-500/10 border-emerald-500/50' : `${cardBg} ${borderCol}`
+                          currentAppearance.suit ? (isDark ? 'bg-white/[0.06] border-white/30' : 'bg-zinc-100 border-zinc-400') : `${cardBg} ${borderCol}`
                         }`}>
                           <span className="text-xs font-bold">Suit Jacket</span>
                           <input
                             type="checkbox"
                             checked={Boolean(currentAppearance.suit)}
                             onChange={(e) => updateCurrentAppearance({ suit: e.target.checked })}
-                            className="h-4 w-4 accent-emerald-500 rounded"
+                            className="h-4 w-4 accent-white rounded"
                           />
                         </label>
 
                         {/* Cap */}
                         <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
-                          currentAppearance.hairStyle === 'cap' ? 'bg-emerald-500/10 border-emerald-500/50' : `${cardBg} ${borderCol}`
+                          currentAppearance.hairStyle === 'cap' ? (isDark ? 'bg-white/[0.06] border-white/30' : 'bg-zinc-100 border-zinc-400') : `${cardBg} ${borderCol}`
                         }`}>
                           <span className="text-xs font-bold">Baseball Cap</span>
                           <input
                             type="checkbox"
                             checked={currentAppearance.hairStyle === 'cap'}
                             onChange={(e) => updateCurrentAppearance({ hairStyle: e.target.checked ? 'cap' : 'short' })}
-                            className="h-4 w-4 accent-emerald-500 rounded"
+                            className="h-4 w-4 accent-white rounded"
                           />
                         </label>
                       </div>
@@ -1240,7 +1121,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                         <div>
                           <h4 className="text-sm font-bold">Display Teammate on Office Floor</h4>
                           <p className={`text-xs mt-0.5 ${subtleText}`}>
-                            When enabled, this teammate occupies a dedicated desk station and appears actively working in the 3D office view.
+                            This controls whether the character appears at a desk. It does not mean an agent is running or a task is in progress.
                           </p>
                         </div>
                         <input
@@ -1248,7 +1129,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                           checked={selectedProfile.enabled}
                           disabled={isSelectedCeo}
                           onChange={(e) => updateCurrentProfile({ enabled: e.target.checked })}
-                          className="h-5 w-5 accent-emerald-500 rounded cursor-pointer disabled:opacity-40"
+                          className="h-5 w-5 accent-white rounded cursor-pointer disabled:opacity-40"
                         />
                       </div>
                     </div>
@@ -1274,9 +1155,8 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
           {/* Modal Bottom Footer */}
           <footer className={`flex shrink-0 items-center justify-between border-t px-6 py-3.5 ${bgSidebar} ${borderCol}`}>
             <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${hasChanges ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
               <span className={`text-xs font-medium ${subtleText}`}>
-                {hasChanges ? 'Unsaved team changes' : 'All modifications saved with project.'}
+                {hasChanges ? 'Unsaved changes' : 'All changes saved'}
               </span>
             </div>
 
@@ -1295,7 +1175,7 @@ export const EmployeeSetupModal: React.FC<EmployeeSetupModalProps> = ({ isOpen, 
                 type="button"
                 onClick={() => void save()}
                 disabled={!hasChanges || saving}
-                className="flex items-center gap-2 h-9 rounded-xl bg-emerald-600 px-5 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`flex items-center gap-2 h-9 rounded-lg px-5 text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isDark ? 'bg-white text-zinc-950 hover:bg-zinc-200' : 'bg-zinc-900 text-white hover:bg-zinc-700'}`}
               >
                 <Check className="h-4 w-4" />
                 <span>{saving ? 'Saving Team...' : 'Save Team'}</span>

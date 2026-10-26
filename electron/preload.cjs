@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('formativeApi', {
   startAgentRun: (request) => ipcRenderer.invoke('start-agent-run', request),
   stopAgentRun: (request) => ipcRenderer.invoke('stop-agent-run', request),
   generateOfficeDialogue: (request) => ipcRenderer.invoke('generate-office-dialogue', request),
+  hasLocalOfficeLlm: () => ipcRenderer.invoke('has-local-office-llm'),
+  selectLocalOfficeModel: () => ipcRenderer.invoke('select-local-office-model'),
   onLiveTranscriptUpdate: (callback) => {
     const handler = (event, steps) => callback(steps);
     ipcRenderer.on('live-transcript-update', handler);

@@ -13,10 +13,10 @@
     "test": "vitest run",
     "start": "electron .",
     "desktop": "tsc && vite build && electron .",
-    "dist": "tsc && vite build && electron-builder --win",
-    "dist:installer": "tsc && vite build && electron-builder --win nsis",
-    "dist:portable": "tsc && vite build && electron-builder --win portable",
-    "dist:dir": "tsc && vite build && electron-builder --win --dir"
+    "dist": "tsc && vite build && electron-builder --config electron-builder.config.cjs --win",
+    "dist:installer": "tsc && vite build && electron-builder --config electron-builder.config.cjs --win nsis",
+    "dist:portable": "tsc && vite build && electron-builder --config electron-builder.config.cjs --win portable",
+    "dist:dir": "tsc && vite build && electron-builder --config electron-builder.config.cjs --win --dir"
   },
   "keywords": [
     "architecture",
@@ -32,53 +32,6 @@
   ],
   "author": "Formative Open Source Community",
   "license": "MIT",
-  "build": {
-    "appId": "dev.formative.studio",
-    "productName": "Formative",
-    "directories": {
-      "output": "build-release"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "public/icon.ico",
-      "public/assets/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "LICENSE",
-        "to": "LICENSE"
-      },
-      {
-        "from": "THIRD_PARTY_NOTICES.md",
-        "to": "THIRD_PARTY_NOTICES.md"
-      },
-      {
-        "from": "llm/formativellm.gguf",
-        "to": "llm/formativellm.gguf"
-      }
-    ],
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "icon": "public/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
-    },
-    "nsis": {
-      "artifactName": "${productName}-Setup-${version}.${ext}",
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Formative"
-    },
-    "portable": {
-      "artifactName": "${productName}-Portable-${version}.${ext}"
-    }
-  },
   "dependencies": {
     "@tabler/icons-react": "^3.49.0",
     "@types/three": "^0.160.0",
@@ -99,7 +52,7 @@
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "electron": "^35.0.0",
+    "electron": "^45.0.0",
     "electron-builder": "^26.15.3",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",

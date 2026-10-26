@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { OfficeMemberProfile, ProjectOfficeTeam } from '../../../types';
 import type { AgentRunStatus } from '../../../types/agentRuns';
-import { MAX_OFFICE_EMPLOYEES } from '../officeCast';
+import { getOfficeTeamSignature, MAX_OFFICE_EMPLOYEES } from '../officeCast';
 
 export interface SelectedPerson {
   name: string;
@@ -55,6 +55,7 @@ export interface ThreeOfficeInstance {
   setTilt: (tilt: number) => void;
   setResolution: (res: number) => void;
   setEmployees: (team: ProjectOfficeTeam) => void;
+  drawProfilePortrait: (profile: OfficeMemberProfile, targetCanvas: HTMLCanvasElement) => void;
   setAgentActivity: (activity: OfficeAgentActivity[]) => void;
   centerCamera: () => void;
   focusEmployee: (employeeId?: string, zoomIn?: boolean) => void;
@@ -4802,10 +4803,9 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                 p.blob.material.opacity = .26;
             }
 
-            function applyProfileToStaff(p, profile, role) {
-                const template = p.formativeTemplate;
+            function profileSpriteParams(profile, template) {
                 const appearance = profile.appearance || {};
-                const params = personParams({
+                return personParams({
                     ...template.params,
                     skin: appearance.skin || template.params.skin,
                     hair: appearance.hair || template.params.hair,
@@ -4818,6 +4818,11 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
                     tie: appearance.tie || template.params.tie || `#c8483e`,
                     cap: appearance.cap || template.params.cap,
                 });
+            }
+
+            function applyProfileToStaff(p, profile, role) {
+                const template = p.formativeTemplate;
+                const params = profileSpriteParams(profile, template);
                 p.name = profile.name;
                 p.role = role;
                 p.officeRoleTitle = profile.roleTitle;
@@ -4882,10 +4887,7 @@ void main(){float d=length(gl_PointCoord-.5);float a=uSoft>.5?smoothstep(.5,.05,
 
             var lastAppliedTeamSignature = '';
             function computeTeamSignature(team) {
-                if (!team) return '';
-                const ceo = team.ceo;
-                const employees = Array.isArray(team.employees) ? team.employees : [];
-                return `${ceo?.id || ''}:${ceo?.name || ''}:${employees.map(e => `${e.id}:${e.name}:${e.enabled}:${e.department}`).join(';')}`;
+                return getOfficeTeamSignature(team);
             }
 
             function applyOfficeTeam(team) {
@@ -5436,6 +5438,27 @@ if (ca < 0) {
     },
     setEmployees(team: ProjectOfficeTeam) {
       applyOfficeTeam(team);
+    },
+    drawProfilePortrait(profile: OfficeMemberProfile, targetCanvas: HTMLCanvasElement) {
+      if (!profile || !targetCanvas) return;
+      const preferences = employeeRolePreferences[profile.department] || [];
+      const actor = STAFF.find(person => person.formativeEmployeeId === profile.id && !person.isFacility)
+        || STAFF.find(person => person.isBench && preferences.includes(person.formativeTemplate?.role))
+        || STAFF.find(person => person.isBench)
+        || STAFF.find(person => person.isCeo);
+      const template = actor?.formativeTemplate || { params: {} };
+      const sheet = makeSheet(profileSpriteParams(profile, template));
+      const context = targetCanvas.getContext('2d');
+      if (!context) return;
+      const width = targetCanvas.width || 64;
+      const height = targetCanvas.height || 96;
+      const scale = Math.min(width / sheet.fw, height / sheet.fh);
+      const drawWidth = sheet.fw * scale;
+      const drawHeight = sheet.fh * scale;
+      context.imageSmoothingEnabled = false;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(sheet.canvas, 0, 0, sheet.fw, sheet.fh,
+        (width - drawWidth) / 2, height - drawHeight, drawWidth, drawHeight);
     },
     setAgentActivity(activity: OfficeAgentActivity[]) {
       setOfficeAgentActivity(activity);
