@@ -6,6 +6,8 @@ on:
     paths:
       - 'website/**'
       - 'vite.website.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 

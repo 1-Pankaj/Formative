@@ -80,9 +80,11 @@
     }
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.49.0",
     "@types/three": "^0.160.0",
     "@xyflow/react": "^12.4.4",
     "clsx": "^2.1.1",
+    "cobe": "^2.0.1",
     "framer-motion": "^12.4.10",
     "node-llama-cpp": "^3.22.2",
     "react": "^19.0.0",
