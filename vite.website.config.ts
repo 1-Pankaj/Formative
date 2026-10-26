@@ -18,5 +18,5 @@ export default defineConfig({
     outDir: '../dist-website',
     emptyOutDir: true,
   },
-  base: './',
+  base: '/Formative/',
 });
