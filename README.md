@@ -160,9 +160,11 @@ Scroll to zoom, drag the canvas to pan, move nodes by dragging them, and connect
 
 - **UI:** [React 19](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/)
 - **Bundler:** [Vite 6](https://vitejs.dev/)
-- **Canvas:** [@xyflow/react](https://reactflow.dev/) and [PixiJS v8](https://pixijs.com/)
-- **Styling:** [Tailwind CSS](https://tailwindcss.com/) and Formative's project-owned icon set
-- **Desktop runtime:** [Electron 35](https://www.electronjs.org/) and [Electron Builder](https://www.electron.build/)
+- **Canvas & Diagrams:** [@xyflow/react](https://reactflow.dev/)
+- **3D Office Engine:** [Three.js](https://threejs.org/)
+- **Local LLM Runtime:** [node-llama-cpp](https://node-llama-cpp.withfluff.com/) with SmolLM2-360M-Instruct
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/) and Formative's internal SVG glyph system
+- **Desktop Runtime:** [Electron 35](https://www.electronjs.org/) and [Electron Builder](https://www.electron.build/)
 
 ## License
 
