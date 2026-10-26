@@ -85,4 +85,58 @@ export const Icons = {
       <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
+
+  // Core Pillars
+  ArchitectureMap: ({ size = 20, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect x="3" y="3" width="6" height="6" rx="1.5" />
+      <rect x="15" y="3" width="6" height="6" rx="1.5" />
+      <rect x="9" y="15" width="6" height="6" rx="1.5" />
+      <path d="M6 9v3a2 2 0 0 0 2 2h4" />
+      <path d="M18 9v3a2 2 0 0 1-2 2h-4" />
+      <path d="M12 14v1" />
+    </svg>
+  ),
+
+  LocalLlm: ({ size = 20, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+      <circle cx="12" cy="12" r="4" />
+    </svg>
+  ),
+
+  AgentCli: ({ size = 20, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M4 17l6-6-6-6" />
+      <path d="M12 19h8" />
+    </svg>
+  ),
+
+  Office3D: ({ size = 20, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+  ),
+
+  SecurityShield: ({ size = 20, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  ),
+
+  Terminal: ({ size = 18, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  ),
+
+  Sparkles: ({ size = 18, className = '', ...props }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+    </svg>
+  ),
 };
