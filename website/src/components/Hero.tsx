@@ -1,113 +1,159 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { FadingVideo } from './FadingVideo';
+import { BlurText } from './BlurText';
 import { Icons } from './Icons';
 
+const motionProps = (delay: number) => ({
+  initial: { filter: 'blur(10px)', opacity: 0, y: 20 },
+  animate: { filter: 'blur(0px)', opacity: 1, y: 0 },
+  transition: { duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] },
+});
+
 export const Hero: React.FC = () => {
-  const [copied, setCopied] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 50, y: 30 });
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePos({ x, y });
-  };
-
-  const copyCloneCmd = () => {
-    navigator.clipboard.writeText('git clone https://github.com/1-Pankaj/Formative.git');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
-    <section 
-      onMouseMove={handleMouseMove}
-      className="relative min-h-[92vh] flex flex-col items-center justify-center pt-28 pb-16 px-4 overflow-hidden bg-[#07080b]"
-    >
-      {/* Precision Background Grid with Radial Mask */}
-      <div className="absolute inset-0 bg-grid-pattern opacity-60 mask-radial pointer-events-none" />
-
-      {/* Aceternity Interactive Mouse-Tracking Spotlight */}
-      <div 
-        className="absolute inset-0 pointer-events-none transition-opacity duration-1000"
-        style={{
-          background: `
-            radial-gradient(circle 600px at ${mousePos.x}% ${mousePos.y}%, rgba(224, 68, 24, 0.14), transparent 70%),
-            radial-gradient(circle 500px at ${100 - mousePos.x}% ${100 - mousePos.y}%, rgba(6, 182, 212, 0.08), transparent 70%)
-          `,
-        }}
+    <section className="relative h-screen overflow-hidden bg-black flex flex-col justify-between">
+      {/* Background Cinematic Video with smooth fade */}
+      <FadingVideo
+        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260619_191346_9d19d66e-86a4-47f7-8dc6-712c1788c3b2.mp4"
+        className="absolute left-1/2 top-0 -translate-x-1/2 object-cover object-top z-0 pointer-events-none"
+        style={{ width: '120%', height: '120%' }}
       />
 
-      {/* Ambient Top Glow Cone */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-brand/20 via-brand/5 to-transparent blur-3xl pointer-events-none" />
+      {/* Atmospheric dark gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80 z-0 pointer-events-none" />
 
-      <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center text-center">
-        {/* Engineering Status Pill */}
-        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#12131b] border border-white/[0.08] text-xs font-mono text-ink-secondary mb-8 shadow-inner shadow-white/5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+      {/* Fixed Liquid Glass Navbar */}
+      <header className="fixed top-4 left-0 right-0 z-50 flex items-center justify-between px-8 lg:px-16 pointer-events-none">
+        {/* Left: liquid-glass circle with italic F */}
+        <a
+          href="#"
+          className="liquid-glass h-12 w-12 rounded-full flex items-center justify-center pointer-events-auto hover:scale-105 active:scale-95 transition-transform"
+        >
+          <span className="font-heading italic text-2xl text-white">F</span>
+        </a>
+
+        {/* Center: liquid-glass pill with navigation links */}
+        <nav className="hidden md:flex items-center gap-1 liquid-glass rounded-full px-1.5 py-1.5 pointer-events-auto">
+          <a href="#capabilities" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+            Capabilities
+          </a>
+          <a href="#architecture" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+            Architecture
+          </a>
+          <a href="#llm" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+            Offline LLM
+          </a>
+          <a href="#agents" className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:text-white transition-colors">
+            Agent CLI
+          </a>
+          <a
+            href="https://github.com/1-Pankaj/Formative/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            className="bg-white text-black rounded-full px-4 py-2 text-sm font-medium font-body flex items-center gap-1.5 hover:bg-white/90 transition-colors ml-1"
+          >
+            <span>Download v1.0.0</span>
+            <Icons.ArrowUpRight size={15} />
+          </a>
+        </nav>
+
+        {/* Right: liquid-glass circle with GitHub icon */}
+        <a
+          href="https://github.com/1-Pankaj/Formative"
+          target="_blank"
+          rel="noreferrer"
+          className="liquid-glass h-12 w-12 rounded-full flex items-center justify-center pointer-events-auto text-white hover:text-white/80 hover:scale-105 active:scale-95 transition-all"
+          title="GitHub Repository"
+        >
+          <Icons.GitHub size={18} />
+        </a>
+      </header>
+
+      {/* Main Centered Hero Content */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center pt-24 px-4 text-center max-w-5xl mx-auto">
+        {/* Badge */}
+        <motion.div {...motionProps(0.4)} className="liquid-glass rounded-full px-3 py-1 flex items-center gap-2">
+          <span className="bg-white text-black text-[10px] font-semibold font-body px-2 py-0.5 rounded-full uppercase tracking-wider">
+            New
           </span>
-          <span className="text-ink-muted">OPEN SOURCE DESKTOP WORKSPACE</span>
-          <span className="text-white/20">|</span>
-          <span className="text-brand font-semibold">ZERO CLOUD TELEMETRY</span>
+          <span className="text-xs text-white/90 font-body font-light">
+            Formative v1.0.0 Public Beta — Desktop-First Open Source
+          </span>
+        </motion.div>
+
+        {/* Headline with BlurText */}
+        <div className="mt-6 max-w-4xl">
+          <BlurText
+            text="Autonomous Engineering Workspace Built For Your Machine"
+            className="text-5xl md:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.85] tracking-[-4px]"
+          />
         </div>
 
-        {/* Master Headline with Precision Grotesque Typography */}
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white max-w-4xl leading-[1.08] mb-6">
-          The autonomous engineering workbench for{' '}
-          <span className="relative inline-block text-transparent bg-clip-text bg-gradient-to-r from-brand via-[#ff7a50] to-[#f59e0b]">
-            diagrams, agents & code.
-          </span>
-        </h1>
+        {/* Subtext */}
+        <motion.p {...motionProps(0.8)} className="mt-4 text-sm md:text-base text-white/90 max-w-2xl font-body font-light leading-snug">
+          A desktop environment unifying syntax-tree architecture diagrams, offline SmolLM2 neural intelligence, and supervised Claude Code and Codex CLI execution. Precise typography, cinematic motion, and code you can be proud of.
+        </motion.p>
 
-        {/* Technical Sub-headline */}
-        <p className="text-base sm:text-lg md:text-xl text-ink-muted max-w-2xl font-normal leading-relaxed mb-10">
-          Orchestrate real <strong className="text-white font-medium">Claude Code</strong> and <strong className="text-white font-medium">Codex CLI</strong> runs, explore syntax-tree architecture maps, and converse with an <strong className="text-white font-medium">offline 270MB local LLM</strong> inside an interactive 3D studio.
-        </p>
-
-        {/* Call-to-Action Group */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto mb-12">
-          {/* Shimmer Border Primary Button */}
+        {/* CTA buttons */}
+        <motion.div {...motionProps(1.1)} className="mt-6 flex items-center gap-6 flex-wrap justify-center">
           <a
-            href="#download"
-            className="relative group p-[1px] overflow-hidden rounded-xl w-full sm:w-auto transition-transform active:scale-[0.98]"
+            href="https://github.com/1-Pankaj/Formative/releases/latest"
+            target="_blank"
+            rel="noreferrer"
+            className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-body font-medium text-white flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
-            {/* Rotating Shimmer Gradient */}
-            <span className="absolute inset-[-1000%] animate-shimmer bg-[conic-gradient(from_90deg_at_50%_50%,#e04418_0%,#ffffff_50%,#e04418_100%)] opacity-80" />
-            
-            <span className="relative flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-[11px] bg-[#0d0e14] text-white font-medium text-sm group-hover:bg-[#12141c] transition-colors">
-              <Icons.Windows size={18} className="text-brand" />
-              <span>Download for Windows</span>
-              <span className="text-xs text-ink-muted font-mono">(1.0.0-beta)</span>
-            </span>
+            <span>Download for Windows</span>
+            <Icons.ArrowUpRight size={16} />
           </a>
 
-          {/* Secondary Outline Button */}
           <a
-            href="#architecture"
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.07] text-white font-medium text-sm w-full sm:w-auto transition-all"
+            href="#capabilities"
+            className="flex items-center gap-2 text-sm font-body font-light text-white/90 hover:text-white transition-colors"
           >
-            <Icons.ArchitectureMap size={18} className="text-cyan-400" />
-            <span>Interactive Demos</span>
-            <Icons.ArrowRight size={14} className="text-ink-muted" />
+            <Icons.Play size={14} />
+            <span>Explore Capabilities</span>
           </a>
-        </div>
+        </motion.div>
 
-        {/* Quick Terminal Clone Widget */}
-        <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-[#0e1017] border border-white/[0.08] text-xs font-mono text-ink-muted max-w-lg w-full justify-between shadow-lg">
-          <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-            <span className="text-brand select-none">$</span>
-            <span className="text-ink-secondary">git clone https://github.com/1-Pankaj/Formative.git</span>
+        {/* Stats cards */}
+        <motion.div {...motionProps(1.3)} className="mt-8 flex gap-4 flex-wrap justify-center">
+          <div className="liquid-glass p-5 w-[220px] rounded-[1.25rem] text-left">
+            <Icons.ClockIcon size={22} className="text-white/90" />
+            <div className="text-4xl font-heading italic tracking-[-1px] leading-none mt-4 text-white">
+              270 MB
+            </div>
+            <div className="text-xs text-white/80 font-body font-light mt-1">
+              Bundled SmolLM2-360M Offline Weights
+            </div>
           </div>
-          <button
-            onClick={copyCloneCmd}
-            className="p-1.5 rounded hover:bg-white/10 text-ink-muted hover:text-white transition-colors flex-shrink-0"
-            title="Copy command"
-          >
-            {copied ? <Icons.Check size={14} className="text-emerald-400" /> : <Icons.Copy size={14} />}
-          </button>
-        </div>
+
+          <div className="liquid-glass p-5 w-[220px] rounded-[1.25rem] text-left">
+            <Icons.GlobeIcon size={22} className="text-white/90" />
+            <div className="text-4xl font-heading italic tracking-[-1px] leading-none mt-4 text-white">
+              0 Bytes
+            </div>
+            <div className="text-xs text-white/80 font-body font-light mt-1">
+              Cloud Telemetry or Code Transmitted
+            </div>
+          </div>
+        </motion.div>
       </div>
+
+      {/* Bottom Trust & Platform Bar */}
+      <motion.div {...motionProps(1.4)} className="relative z-10 flex flex-col items-center gap-4 pb-8 px-4">
+        <div className="liquid-glass rounded-full px-4 py-1 text-xs text-white/80 font-body font-light">
+          Trusted by founders, operators, and systems architects worldwide
+        </div>
+
+        <div className="flex items-center gap-8 sm:gap-12 md:gap-16 flex-wrap justify-center">
+          {['Claude Code', 'OpenAI Codex', 'TypeScript AST', 'node-llama-cpp', 'Three.js'].map((brand) => (
+            <span key={brand} className="font-heading italic text-2xl md:text-3xl tracking-tight text-white/80">
+              {brand}
+            </span>
+          ))}
+        </div>
+      </motion.div>
     </section>
   );
 };

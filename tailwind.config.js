@@ -35,6 +35,8 @@ export default {
         },
       },
       fontFamily: {
+        heading: ["'Instrument Serif'", 'serif'],
+        body: ["'Barlow'", 'sans-serif'],
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['JetBrains Mono', 'Consolas', 'monospace'],
       },
