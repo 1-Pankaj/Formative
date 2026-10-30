@@ -1,19 +1,270 @@
 <!DOCTYPE html>
-<html lang="en" class="dark scroll-smooth">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Formative — Local Architecture & Agent Workspace</title>
-    <meta name="description" content="An open-source desktop workspace for project architecture, tasks, read-only local agent runs, transcript review, and optional on-device office chat." />
-    <link rel="icon" type="image/svg+xml" href="./FormativeLogo.svg" />
-    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-    <link rel="apple-touch-icon" href="./FormativeLogo.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  </head>
-  <body class="bg-black text-white antialiased selection:bg-white/20 selection:text-white overflow-x-hidden min-h-screen font-body">
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
-  </body>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Formative — Your project, alive.</title>
+<meta name="description" content="Formative is a free, open-source desktop app that brings your project diagrams, tasks and AI helpers together on your own computer.">
+<meta name="theme-color" content="#07060b"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07060b;--fg:#f4efe6;--mut:rgba(244,239,230,.62);--line:rgba(244,239,230,.16);--grad:linear-gradient(100deg,#8a3dff,#ff2e93 45%,#ff8a3d 90%);--d:'Syne','Inter',system-ui,sans-serif;--b:'Inter',system-ui,sans-serif;--m:'JetBrains Mono',ui-monospace,monospace;--pad:clamp(20px,5vw,80px);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);background:var(--bg)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--fg);font:300 clamp(16px,1.25vw,19px)/1.6 var(--b);overflow-x:clip;-webkit-font-smoothing:antialiased}
+body.nc,body.nc *{cursor:none!important}
+a{color:inherit;text-decoration:none}
+::selection{background:#ff2e93;color:#fff}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+main,header,footer{position:relative;z-index:2}
+h1,h2,h3{font-family:var(--d);font-weight:800;letter-spacing:-.04em;line-height:1.08;padding-bottom:.08em}
+h2{font-size:clamp(2.4rem,7.4vw,7rem)}
+.g{background:var(--grad);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;padding:0 .05em .12em;animation:gs 6s linear infinite alternate}
+@keyframes gs{to{background-position:100% 0}}
+.mo{font:400 12px/1.4 var(--m);letter-spacing:.16em;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:18px}
+.wrap{max-width:1360px;margin:auto;padding:0 var(--pad)}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:18px 32px;border-radius:99px;font:500 15px var(--b);background:var(--fg);color:#0b0a10;position:relative;overflow:hidden;isolation:isolate;transition:color .5s}
+.btn::before{content:"";position:absolute;inset:-2px;background:var(--grad);transform:translateY(102%);border-radius:50% 50% 0 0/80% 80% 0 0;transition:transform .6s cubic-bezier(.7,0,.2,1),border-radius .6s;z-index:-1}
+.btn:hover{color:#fff}.btn:hover::before{transform:none;border-radius:0}
+.btn.o{background:rgba(255,255,255,.06);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+/* cursor */
+#cur{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px;border-radius:50%;border:1px solid #fff;mix-blend-mode:difference;z-index:120;pointer-events:none;display:none;align-items:center;justify-content:center;font:400 10px var(--m);color:#fff;letter-spacing:.1em;text-transform:uppercase}
+.nc #cur{display:flex}
+/* nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;justify-content:space-between;align-items:center;padding:calc(20px + env(safe-area-inset-top,0px)) var(--pad) 20px;mix-blend-mode:difference;color:#fff}
+nav b{font:800 26px var(--d);letter-spacing:-.04em}nav div{display:flex;gap:clamp(14px,2.4vw,34px);font:400 12px var(--m);letter-spacing:.14em;text-transform:uppercase}
+@media(max-width:700px){nav div a:not(:last-child){display:none}}
+/* hero */
+.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:flex-end;padding:calc(90px + env(safe-area-inset-top,0px)) var(--pad) clamp(28px,4vw,56px)}
+.hero h1{font-size:clamp(3rem,11vw,15rem);line-height:1.05;letter-spacing:-.05em;mix-blend-mode:difference;color:#fff;perspective:900px;white-space:nowrap;margin-left:-.03em}
+.L{display:inline-block;will-change:transform}.L i{display:inline-block;font-style:normal;will-change:transform}
+.hrow{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-top:clamp(20px,3vw,40px)}
+.hrow p{max-width:480px;font-size:clamp(17px,1.6vw,23px);line-height:1.45}
+/* marquee */
+.mqw{overflow:hidden;padding:9vh 0;transform:skewY(-3deg);margin:6vh 0;background:rgba(7,6,11,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-block:1px solid var(--line)}
+.mq{display:flex;white-space:nowrap;font:800 clamp(4rem,11vw,10rem)/1.15 var(--d);letter-spacing:-.04em;will-change:transform}
+.mq span{padding-right:.5em;color:transparent;-webkit-text-stroke:1.5px var(--fg)}.mq span:nth-child(3n){color:var(--fg);-webkit-text-stroke:0}.mq span:nth-child(3n+1){background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-stroke:0}
+/* graph */
+.gr{position:relative;height:130svh;margin-top:10vh}
+.gs{position:sticky;top:0;height:100svh}
+#gc{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
+.gt{position:absolute;left:var(--pad);top:calc(100px + env(safe-area-inset-top,0px));pointer-events:none;max-width:min(640px,86vw)}
+.gt p{color:var(--mut);margin-top:16px;max-width:460px}
+.gh{position:absolute;right:var(--pad);bottom:calc(32px + env(safe-area-inset-bottom,0px));pointer-events:none}
+/* stack */
+.sec{padding:20vh 0 0}
+.hd{margin-bottom:clamp(40px,6vw,80px)}
+.sc{position:sticky;top:calc(88px + var(--i)*26px);min-height:min(72svh,640px);margin-bottom:7vh;border-radius:clamp(24px,3vw,44px);display:grid;grid-template-columns:1.1fr .9fr;gap:3vw;align-items:center;padding:clamp(24px,4.4vw,64px);background:linear-gradient(140deg,rgba(255,255,255,.1),rgba(255,255,255,.02));border:1px solid var(--line);-webkit-backdrop-filter:blur(28px);backdrop-filter:blur(28px);overflow:hidden;will-change:transform}
+.sc::after{content:"";position:absolute;inset:0;background:radial-gradient(500px circle at var(--mx,50%) var(--my,0%),rgba(255,255,255,.14),transparent 60%);pointer-events:none}
+.sc .n{position:absolute;right:3%;top:-6%;font:800 clamp(9rem,24vw,22rem)/1 var(--d);color:transparent;-webkit-text-stroke:1px var(--line);pointer-events:none}
+.sc h3{font-size:clamp(2rem,4.6vw,4.4rem);margin:8px 0 18px;position:relative}.sc p{color:var(--mut);max-width:500px;position:relative}
+.vz{width:100%;max-width:380px;justify-self:center;position:relative;z-index:1}.vz *{transform-box:fill-box;transform-origin:center}
+.fl{stroke-dasharray:6 8;animation:da 1.4s linear infinite}@keyframes da{to{stroke-dashoffset:-28}}
+.sp{animation:sp 14s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}.sp2{animation:sp 9s linear infinite reverse}
+.bo{animation:bo 2.6s ease-in-out infinite}@keyframes bo{50%{transform:translateY(-10px)}}
+.ck{stroke-dasharray:40;stroke-dashoffset:40;animation:ck 4s ease-in-out infinite}@keyframes ck{15%,80%{stroke-dashoffset:0}100%{stroke-dashoffset:40}}
+.po{animation:po 5s ease-in-out infinite;opacity:0}@keyframes po{10%,85%{opacity:1;transform:none}0%,100%{opacity:0;transform:scale(.85)}}
+@media(max-width:860px){.sc{grid-template-columns:1fr}.vz{max-width:240px}}
+/* terminal */
+.tm{display:grid;grid-template-columns:.9fr 1.1fr;gap:clamp(24px,5vw,80px);align-items:center}
+.term{border-radius:24px;background:rgba(10,8,18,.82);border:1px solid var(--line);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 40px 100px -20px rgba(138,61,255,.35);overflow:hidden}
+.term .tb{display:flex;gap:7px;padding:16px 20px;border-bottom:1px solid var(--line)}.term .tb i{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.term pre{font:400 clamp(12px,1.05vw,15px)/1.85 var(--m);padding:clamp(16px,2.4vw,32px);white-space:pre-wrap;min-height:20em;color:var(--fg)}
+.term .k{color:#ff8a3d}.term .d{color:var(--mut)}.term .p{color:#ff2e93}
+@media(max-width:860px){.tm{grid-template-columns:1fr}}
+/* numbers */
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-top:20vh;border-top:1px solid var(--line)}
+.nums div{padding:36px 20px 36px 0;border-right:1px solid var(--line)}.nums div:last-child{border:0}
+.nums b{display:block;font:800 clamp(5rem,12vw,11rem)/1 var(--d);letter-spacing:-.06em;padding-bottom:.06em}
+/* reveal */
+.rv{height:260svh;margin-top:20vh;position:relative}
+.rvs{position:sticky;top:0;height:100svh;overflow:hidden}
+.rvl{position:absolute;inset:0;background:#f4efe6;color:#0b0a10;clip-path:circle(0% at 50% 62%);display:flex;flex-direction:column;justify-content:center;gap:clamp(18px,3vw,44px);padding:calc(70px + env(safe-area-inset-top,0px)) var(--pad) calc(30px + env(safe-area-inset-bottom,0px))}
+.rvl .mo{color:rgba(11,10,16,.55);margin:0}.rvl h2{font-size:clamp(2.1rem,6.6vw,6.4rem)}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,3vw,48px)}.cols div{border-top:2px solid #0b0a10;padding-top:14px;font-size:clamp(14px,1.2vw,18px);line-height:1.5;color:rgba(11,10,16,.75)}.cols b{display:block;font:800 clamp(1.1rem,1.8vw,1.7rem) var(--d);color:#0b0a10;margin-bottom:6px;letter-spacing:-.03em}
+.rvh{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 var(--pad)}
+@media(max-width:760px){.cols{grid-template-columns:1fr}.cols div{padding-top:10px}}
+/* start + cta */
+.stp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.stp div{padding:clamp(24px,3vw,40px);border:1px solid var(--line);border-radius:28px;background:rgba(255,255,255,.04);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);transition:transform .7s cubic-bezier(.2,.8,.2,1),background .5s}.stp div:hover{transform:translateY(-10px);background:rgba(255,255,255,.09)}
+.stp b{font:800 4rem/1 var(--d)}.stp h3{font-size:1.7rem;margin:14px 0 8px}.stp p{color:var(--mut)}
+code{font:400 .85em var(--m);background:rgba(255,255,255,.1);padding:2px 8px;border-radius:8px}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.chips span{padding:10px 20px;border-radius:99px;box-shadow:inset 0 0 0 1px var(--line);font:400 12px var(--m);letter-spacing:.1em;text-transform:uppercase}
+.cta{min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:36px;padding:18vh var(--pad) 8vh}
+.cta h2{font-size:clamp(3rem,13.5vw,15rem);line-height:1.05;letter-spacing:-.055em}
+footer{display:flex;justify-content:space-between;gap:16px 32px;flex-wrap:wrap;padding:28px var(--pad) calc(28px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg);font:400 12px var(--m);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}footer a:hover{color:var(--fg)}
+html{-webkit-tap-highlight-color:transparent}
+@media(max-width:860px){.sc{top:calc(70px + var(--i)*14px);min-height:0;gap:20px;padding:24px 22px 28px;margin-bottom:5vh}.sc h3{font-size:clamp(1.7rem,7.4vw,2.4rem);margin:6px 0 12px}.sc p{font-size:15.5px}.vz{max-width:190px}.nums div{border-right:0;border-bottom:1px solid var(--line);padding:24px 0}.nums div:last-child{border-bottom:0}}
+@media(max-width:700px){.hero h1{font-size:12.8vw}.btns{width:100%}.btns .btn{flex:1 1 100%;justify-content:center;padding:17px 24px}.gt p{display:none}.mqw{padding:6vh 0}.sec{padding-top:14vh}.hd{margin-bottom:36px}.rvl{gap:16px;padding-top:calc(64px + env(safe-area-inset-top,0px))}.rvl h2{font-size:clamp(1.8rem,8.4vw,2.6rem)}.cols{gap:12px}.cols div{font-size:13.5px;line-height:1.45}.cols b{font-size:1.05rem}.term pre{min-height:17em;font-size:11.5px}.stp div{padding:22px}.cta{padding-top:14vh}footer{flex-direction:column;gap:10px}}
+@media(max-width:700px) and (max-height:700px){.rvl h2{font-size:1.65rem}.cols div{font-size:12.5px}}
+.hero .hl{display:none}.ln{display:inline}
+@media(max-width:1099px){.hero{justify-content:center;padding-top:calc(100px + env(safe-area-inset-top,0px));padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
+@media(max-width:1099px){.gt{max-width:min(900px,90vw)}.gt p{display:none}.gt h2{font-size:clamp(2.2rem,6.4vw,4.6rem)}}
+@media(max-width:700px){.hero{padding-top:calc(80px + env(safe-area-inset-top,0px));padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}.hero .hl{display:block;margin-bottom:12px}.hero h1{font-size:20vw;line-height:1;white-space:normal;margin-left:-.02em}.ln{display:block}.hrow{margin-top:22px;gap:20px}.hrow p{width:100%;font-size:16.5px;line-height:1.5}.btns{gap:10px}.gt h2{font-size:clamp(2rem,9.6vw,2.8rem)}}
+.lead{color:var(--mut);font-size:clamp(17px,1.7vw,22px);max-width:640px;margin-top:20px}
+.lw{overflow:hidden;margin:0 0 clamp(36px,5vw,64px)}.lw .mq{margin-bottom:14px}
+.mq.sm{font:400 clamp(13px,1.1vw,15px)/1 var(--m);letter-spacing:.12em;text-transform:uppercase}
+.mq.sm span,.mq.sm span:nth-child(n){padding:16px 28px;margin-right:12px;border-radius:99px;color:var(--fg);-webkit-text-stroke:0;background:rgba(255,255,255,.05);-webkit-background-clip:border-box;background-clip:border-box;box-shadow:inset 0 0 0 1px var(--line)}
+.fx,.tk,.hp{display:grid;gap:16px}.fx{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}.tk{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.hp{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.fx div,.tk div,.hp a{display:block;padding:clamp(22px,2.6vw,36px);border:1px solid var(--line);border-radius:28px;background:rgba(255,255,255,.04);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);transition:background .5s,border-color .5s}
+.fx div:hover,.tk div:hover,.hp a:hover{background:rgba(255,255,255,.1);border-color:rgba(255,46,147,.6)}
+.fx h3,.hp h3{font-size:clamp(1.4rem,2vw,1.8rem);margin-bottom:10px}.fx p,.tk p,.hp p{color:var(--mut);font-size:.95em}
+.tk b{display:block;font:800 clamp(1.4rem,2vw,1.9rem) var(--d);letter-spacing:-.03em;margin-bottom:6px}.hp .mo{margin-bottom:34px}
+.faq{max-width:920px;margin:auto}.q{border-bottom:1px solid var(--line)}
+.q button{all:unset;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:28px 0;font:800 clamp(1.15rem,2.3vw,1.8rem)/1.25 var(--d);letter-spacing:-.03em;cursor:pointer;color:var(--fg)}
+.q button::after{content:"+";font:300 2.2rem/1 var(--b);flex:none;transition:transform .6s cubic-bezier(.2,.8,.2,1)}.q.on button::after{transform:rotate(135deg)}
+.q .a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .7s cubic-bezier(.2,.8,.2,1)}.q.on .a{grid-template-rows:1fr}.q .a>div{overflow:hidden}.q .a p{color:var(--mut);padding-bottom:28px;max-width:720px}
+</style>
+</head>
+<body>
+<div id="cur"></div><canvas id="gl"></canvas>
+<nav><b>Formative</b><div><a href="#build" data-c="Go">The tour</a><a href="#ask" data-c="Go">AI helpers</a><a href="#privacy" data-c="Go">Privacy</a><a href="#faq" data-c="Go">Questions</a><a href="https://github.com/1-Pankaj/Formative/releases" data-c="Get">Download ↗</a></div></nav>
+<header class="hero"><span class="mo hl">Free · Open source · Public beta</span><h1 id="h1">Formative</h1>
+  <div class="hrow"><p id="hp">Draw your project, track the work and chat with your AI helpers. One app, free and open source, living entirely on your computer.</p>
+  <div class="btns" id="hb"><a class="btn" data-m data-c="Get" href="https://github.com/1-Pankaj/Formative/releases">Download for Windows</a><a class="btn o" data-m data-c="Open" href="https://github.com/1-Pankaj/Formative">View on GitHub ↗</a></div></div></header>
+<main>
+<div class="mqw"><div class="mq"><span>Draw</span><span>Plan</span><span>Ask</span><span>Build</span><span>Draw</span><span>Plan</span><span>Ask</span><span>Build</span></div><div class="mq"><span>Free</span><span>Open source</span><span>Yours</span><span>Free</span><span>Open source</span><span>Yours</span></div></div>
+
+<section class="gr" id="build"><div class="gs"><canvas id="gc"></canvas>
+  <div class="gt"><span class="mo">Try it — it’s alive</span><h2>Grab a <span class="g">box.</span><br>Pull it around.</h2><p>This is what a Formative canvas feels like. Drag any part of the project. Click empty space to add a new one.</p></div>
+  <span class="mo gh">Drag · Tap or click to add</span></div></section>
+
+<section class="sec"><div class="wrap"><div class="hd"><span class="mo">Five things in one app</span><h2>Everything your project <span class="g">needs.</span></h2></div>
+  <article class="sc" style="--i:0"><span class="n">1</span><div><span class="mo">Canvas</span><h3>Sketch how it all fits together.</h3><p>Draw a box for each part of your project and link them with lines. Move, zoom and rearrange freely. It’s saved right inside your project.</p></div>
+    <svg class="vz" viewBox="0 0 300 240"><g fill="none" stroke="#f4efe6" stroke-width="2" class="fl"><path d="M110 70C150 70 140 120 180 120M110 170C150 170 140 120 180 120"/></g><g fill="#1b1528" stroke="#ff2e93" stroke-width="2"><rect class="bo" x="30" y="45" width="80" height="50" rx="14"/><rect class="bo" style="animation-delay:.6s" x="30" y="145" width="80" height="50" rx="14"/><rect class="bo" style="animation-delay:1.2s" x="180" y="95" width="90" height="50" rx="14"/></g></svg></article>
+  <article class="sc" style="--i:1"><span class="n">2</span><div><span class="mo">Code map</span><h3>See what your code really looks like.</h3><p>Point Formative at a folder and it draws how your files connect. Solid lines are found in your code. Dashed lines are guesses, and they’re always labelled.</p></div>
+    <svg class="vz" viewBox="0 0 300 240"><g class="sp" fill="none" stroke="#f4efe6" stroke-width="1.5"><circle cx="150" cy="120" r="100" stroke-dasharray="3 9"/><circle cx="250" cy="120" r="9" fill="#ff8a3d" stroke="none"/><circle cx="50" cy="120" r="9" fill="#8a3dff" stroke="none"/></g><g class="sp2" fill="none" stroke="#f4efe6" stroke-width="1.5"><circle cx="150" cy="120" r="60"/><circle cx="150" cy="60" r="8" fill="#ff2e93" stroke="none"/><circle cx="210" cy="120" r="8" fill="#f4efe6" stroke="none"/></g><circle cx="150" cy="120" r="20" fill="#ff2e93"/></svg></article>
+  <article class="sc" style="--i:2"><span class="n">3</span><div><span class="mo">Tasks</span><h3>Keep track of the work.</h3><p>Add tasks, change their status and hand them to teammates. Send a task to an AI helper and it knows exactly what you mean.</p></div>
+    <svg class="vz" viewBox="0 0 300 240"><g fill="#1b1528" stroke="#f4efe699"><rect x="20" y="30" width="260" height="52" rx="14"/><rect x="20" y="94" width="260" height="52" rx="14"/><rect x="20" y="158" width="260" height="52" rx="14"/></g><g fill="none" stroke="#ff8a3d" stroke-width="4" stroke-linecap="round"><path class="ck" d="M40 56l9 9 17-19"/><path class="ck" style="animation-delay:.5s" d="M40 120l9 9 17-19"/><path class="ck" style="animation-delay:1s" d="M40 184l9 9 17-19"/></g><g fill="#f4efe6"><rect x="86" y="52" width="120" height="8" rx="4"/><rect x="86" y="116" width="150" height="8" rx="4"/><rect x="86" y="180" width="90" height="8" rx="4"/></g></svg></article>
+  <article class="sc" style="--i:3"><span class="n">4</span><div><span class="mo">AI helpers</span><h3>Ask your AI helpers. Safely.</h3><p>Chat with Codex or Claude Code, the tools you may already use. Formative starts them in a look-but-don’t-touch mode: they can read your project, never change it.</p></div>
+    <svg class="vz" viewBox="0 0 300 240"><g class="po"><rect x="90" y="25" width="190" height="48" rx="20" fill="#f4efe6"/></g><g class="po" style="animation-delay:.8s"><rect x="20" y="95" width="230" height="64" rx="20" fill="#2a2140" stroke="#ff2e93"/><rect x="40" y="115" width="170" height="8" rx="4" fill="#f4efe6"/><rect x="40" y="132" width="120" height="8" rx="4" fill="#f4efe6" opacity=".6"/></g><g class="po" style="animation-delay:1.6s"><rect x="20" y="180" width="150" height="34" rx="17" fill="none" stroke="#ff8a3d"/><rect x="40" y="194" width="110" height="6" rx="3" fill="#ff8a3d"/></g></svg></article>
+  <article class="sc" style="--i:4"><span class="n">5</span><div><span class="mo">The office</span><h3>A tiny 3D office for your team.</h3><p>Every project has its own office. Add up to 23 teammates, name them, give them roles, and watch real activity from your AI helpers appear as people hard at work.</p></div>
+    <svg class="vz" viewBox="0 0 300 240"><g fill="#1b1528" stroke="#f4efe666"><rect x="20" y="100" width="76" height="44" rx="10"/><rect x="112" y="100" width="76" height="44" rx="10"/><rect x="204" y="100" width="76" height="44" rx="10"/><rect x="66" y="180" width="76" height="44" rx="10"/><rect x="158" y="180" width="76" height="44" rx="10"/></g><g><circle class="bo" cx="58" cy="76" r="16" fill="#ff8a3d"/><circle class="bo" style="animation-delay:.5s" cx="150" cy="76" r="16" fill="#ff2e93"/><circle class="bo" style="animation-delay:1s" cx="242" cy="76" r="16" fill="#8a3dff"/><circle class="bo" style="animation-delay:1.5s" cx="104" cy="156" r="16" fill="#f4efe6"/><circle class="bo" style="animation-delay:2s" cx="196" cy="156" r="16" fill="#ff8a3d"/></g></svg></article>
+</div></section>
+
+<section class="sec" id="ask"><div class="wrap tm">
+  <div><span class="mo">AI helpers</span><h2>Ask. <span class="g">Relax.</span></h2><p style="color:var(--mut);margin-top:18px;max-width:440px">Formative opens your installed AI helpers in a read-only mode. They can look around and answer questions, but they can’t edit a file or run a command. The window on the right is an illustration.</p></div>
+  <div class="term"><div class="tb"><i></i><i></i><i></i></div><pre id="tp"></pre></div></div>
+  <div class="wrap"><div class="nums">
+    <div><b data-n="23">0</b><span class="mo">Teammates you can add</span></div><div><b data-n="9">0</b><span class="mo">Main folders mapped</span></div><div><b data-n="500">0</b><span class="mo">Top-level items scanned</span></div><div><b data-n="0">0</b><span class="mo">Dollars a month</span></div></div></div></section>
+
+<section class="sec" id="code"><div class="wrap"><div class="hd"><span class="mo">Understands your code</span><h2>Speaks the languages <span class="g">you write.</span></h2><p class="lead">The code map reads your files on your own computer and shows how they connect. It never runs your code, installs anything or uploads a single file.</p></div></div>
+<div class="lw"><div class="mq sm" data-dup><span>JavaScript</span><span>TypeScript</span><span>Vue</span><span>Svelte</span><span>Astro</span><span>Python</span><span>Go</span><span>Rust</span><span>Java</span><span>C#</span><span>PHP</span><span>Ruby</span></div><div class="mq sm" data-dup><span>Next.js</span><span>Remix</span><span>SvelteKit</span><span>Nuxt</span><span>Astro routes</span><span>Docker</span><span>package.json</span><span>Python projects</span></div></div>
+<div class="wrap"><div class="fx"><div><span class="mo">Very precise</span><h3>JavaScript and TypeScript</h3><p>Imports are read with a real code parser, including the scripts inside Vue, Svelte and Astro files. If a link is shown, it’s really there.</p></div><div><span class="mo">Careful guesses</span><h3>Everything else</h3><p>Python, Go, Rust, Java, C#, PHP and Ruby use simpler pattern matching, so a few connections may be missed. We’d rather miss one than invent one.</p></div><div><span class="mo">Knows your pages</span><h3>Routes and data</h3><p>It spots pages in Next.js, Remix, SvelteKit, Nuxt and Astro, and suggests links between API calls and routes. Suggestions are always labelled as guesses.</p></div></div>
+<p style="margin-top:28px;color:var(--mut);max-width:720px">Good to know: code that’s loaded on the fly, generated code and unusual setups may not show up. The map always tells you when it hit a limit.</p></div></section>
+
+<section class="rv" id="privacy"><div class="rvs"><div class="rvh"><h2>Scroll to see<br><span class="g">where it all lives.</span></h2></div>
+  <div class="rvl" id="rvl"><span class="mo">Privacy, in plain words</span><h2>Your project stays on <span style="font-style:normal;color:#ff2e93">your computer.</span></h2>
+  <div class="cols"><div><b>Saved at home</b>Projects, diagrams, tasks and code maps live on your machine. We never upload your source files.</div><div><b>Shared when you chat</b>When you talk to Codex or Claude Code, your message and needed details go through their service. Their fees may apply.</div><div><b>Optional and local</b>Office chat uses a small model on your device. You pick the file, and it can’t see your project.</div></div></div></div></section>
+
+<section class="sec"><div class="wrap"><div class="hd"><span class="mo">Getting started</span><h2>Three steps. <span class="g">That’s it.</span></h2></div>
+  <div class="stp"><div><b class="g">1</b><h3>Download</h3><p>Grab the latest Windows build from the Releases page.</p></div><div><b class="g">2</b><h3>Open a project</h3><p>Start fresh, open a folder, or try the example project.</p></div><div><b class="g">3</b><h3>Add a helper</h3><p>Optional: install Codex or Claude Code to chat. Builders can run <code>npm ci</code> then <code>npm run desktop</code>.</p></div></div>
+  <p style="margin-top:56px;color:var(--mut)">Still on the way — not available today:</p><div class="chips"><span>Antigravity IDE</span><span>OpenCode</span><span>OpenClaw</span><span>Ollama</span><span>Kiro</span><span>API keys</span><span>MCP</span></div></div></section>
+
+<section class="sec" id="stack"><div class="wrap"><div class="hd"><span class="mo">Under the hood</span><h2>Built with <span class="g">great tools.</span></h2><p class="lead">For the curious: here’s what Formative is made of. Everything here is open and free to explore.</p></div>
+<div class="tk"><div><b>React 19</b><p>The whole interface you click around in.</p></div><div><b>TypeScript</b><p>Keeps the code safe and easy to follow.</p></div><div><b>Vite 6</b><p>Builds the app quickly.</p></div><div><b>React Flow</b><p>Powers the drag-and-connect canvas.</p></div><div><b>Three.js</b><p>Draws the 3D office from simple shapes.</p></div><div><b>node-llama-cpp</b><p>Runs the small on-device chat model, SmolLM2.</p></div><div><b>Electron 45</b><p>Turns it all into a desktop app.</p></div><div><b>Tailwind CSS</b><p>Styling, plus our own hand-made icon set.</p></div></div></div></section>
+
+<section class="sec" id="help"><div class="wrap"><div class="hd"><span class="mo">Built in public</span><h2>Come <span class="g">help.</span></h2><p class="lead">Formative is young, and every idea counts. You don’t have to write code to make it better.</p></div>
+<div class="hp"><a href="https://github.com/1-Pankaj/Formative/issues" data-c="Open"><span class="mo">01</span><h3>Share an idea or a bug</h3><p>Open an issue and tell us what’s missing or broken.</p></a><a href="https://github.com/1-Pankaj/Formative/blob/master/CONTRIBUTING.md" data-c="Open"><span class="mo">02</span><h3>Write some code</h3><p>The contributing guide explains how to set up and send a change.</p></a><a href="https://github.com/1-Pankaj/Formative/blob/master/docs/PRODUCT_PLAN.md" data-c="Open"><span class="mo">03</span><h3>Read the plan</h3><p>See where the project is heading before you start something big.</p></a><a href="https://github.com/1-Pankaj/Formative/blob/master/SECURITY.md" data-c="Open"><span class="mo">04</span><h3>Report a security issue</h3><p>Found something risky? Please report it privately, following the policy.</p></a></div></div></section>
+
+<section class="sec" id="faq"><div class="wrap"><div class="hd"><span class="mo">Questions</span><h2>Good <span class="g">to know.</span></h2></div>
+<div class="faq">
+<div class="q"><button data-c="Toggle">Is it really free?</button><div class="a"><div><p>Yes. Formative is open source under the MIT license, with no subscription plans and no paid features. If you chat with Codex or Claude Code inside it, those companies may charge their own fees.</p></div></div></div>
+<div class="q"><button data-c="Toggle">Can the AI change my files?</button><div class="a"><div><p>Not from Formative. Codex runs in a read-only mode, and Claude Code starts in planning mode with reading and searching only. Shell commands, file editing and project tools are switched off.</p></div></div></div>
+<div class="q"><button data-c="Toggle">Does Formative upload my code?</button><div class="a"><div><p>No. Folder scans and the code map run on your computer. Project details only leave it when you chat with an AI helper, and then they go to that helper’s own service.</p></div></div></div>
+<div class="q"><button data-c="Toggle">Which computers does it run on?</button><div class="a"><div><p>Today, the downloads are for Windows. A browser preview exists for developers, but it can’t scan folders or import transcripts, so the desktop app is the real thing.</p></div></div></div>
+<div class="q"><button data-c="Toggle">Do I need the AI tools to use it?</button><div class="a"><div><p>No. Diagrams, tasks, the code map and the office all work on their own. You only need Codex or Claude Code for Agent Chat.</p></div></div></div>
+<div class="q"><button data-c="Toggle">Can it join my AI chats that are already running?</button><div class="a"><div><p>Not yet. Formative can’t attach to existing Codex desktop, Claude desktop or Antigravity sessions. You can start new chats from inside Formative, or open saved transcripts to read them.</p></div></div></div>
+<div class="q"><button data-c="Toggle">Is the project finished?</button><div class="a"><div><p>It’s in public beta and changing fast. Some things are still being tested, and we’d rather tell you that than pretend otherwise. The Releases page always shows what’s ready today.</p></div></div></div>
+</div></div></section>
+
+<section class="cta"><span class="mo">Public beta · MIT licensed</span><h2 id="ch">Build it with us.</h2><div class="btns"><a class="btn" data-m data-c="Get" href="https://github.com/1-Pankaj/Formative/releases">Download Formative</a><a class="btn o" data-m data-c="Star" href="https://github.com/1-Pankaj/Formative">Star on GitHub ↗</a><a class="btn o" data-m data-c="Help" href="https://github.com/1-Pankaj/Formative/blob/master/CONTRIBUTING.md">Contribute</a></div></section>
+</main>
+<footer><span>© 2026 Formative</span><a href="https://github.com/1-Pankaj/Formative/blob/master/LICENSE">MIT license</a><a href="https://github.com/1-Pankaj/Formative/blob/master/SECURITY.md">Security</a><a href="https://github.com/1-Pankaj/Formative/blob/master/CODE_OF_CONDUCT.md">Code of conduct</a><a href="https://github.com/1-Pankaj">Made by Pankaj</a></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+gsap.registerPlugin(ScrollTrigger);
+const rm=matchMedia('(prefers-reduced-motion:reduce)').matches,fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
+let lenis,vel=0,mx=.5,my=.5,px=-9999,py=-9999;
+if(!rm){lenis=new Lenis({lerp:.09});lenis.on('scroll',e=>{ScrollTrigger.update();vel=e.velocity});gsap.ticker.add(t=>lenis.raf(t*1000));gsap.ticker.lagSmoothing(0)}
+addEventListener('pointermove',e=>{mx=e.clientX/innerWidth;my=1-e.clientY/innerHeight;if(e.pointerType==='mouse'){px=e.clientX;py=e.clientY}});
+/* ---- living shader background ---- */
+const gl=$('#gl'),g=gl.getContext('webgl');let sp=0;
+if(g){const mk=(t,s)=>{const o=g.createShader(t);g.shaderSource(o,s);g.compileShader(o);return o},pr=g.createProgram();
+g.attachShader(pr,mk(g.VERTEX_SHADER,'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}'));
+g.attachShader(pr,mk(g.FRAGMENT_SHADER,`precision mediump float;uniform vec2 r,m;uniform float t,s;
+float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1.,0.)),f.x),mix(h(i+vec2(0.,1.)),h(i+1.),f.x),f.y);}
+float fb(vec2 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*n(p);p*=2.02;a*=.5;}return v;}
+void main(){vec2 q=(gl_FragCoord.xy-.5*r)/r.y,mm=(m*r-.5*r)/r.y;float d=length(q-mm);q+=normalize(q-mm+1e-4)*.16*exp(-d*4.);
+float tt=t*.1+s*1.6;vec2 w=vec2(fb(q*2.2+tt),fb(q*2.2-tt+4.));float f=fb(q*2.+w*2.2+tt);
+vec3 c=mix(vec3(.02,.015,.05),vec3(.4,.14,.9),smoothstep(.25,.62,f));c=mix(c,vec3(1.,.15,.55),smoothstep(.55,.82,f+w.x*.25));c=mix(c,vec3(1.,.5,.2),smoothstep(.8,1.,f+w.y*.3));
+c*=.62*smoothstep(1.5,.1,length(q))+.06;gl_FragColor=vec4(c,1.);}`));
+g.linkProgram(pr);g.useProgram(pr);g.bindBuffer(g.ARRAY_BUFFER,g.createBuffer());g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),g.STATIC_DRAW);
+const a=g.getAttribLocation(pr,'p');g.enableVertexAttribArray(a);g.vertexAttribPointer(a,2,g.FLOAT,false,0,0);
+const U=k=>g.getUniformLocation(pr,k);let sx=.5,sy=.5;
+const rs=()=>{const k=innerWidth<700?.45:.6;gl.width=innerWidth*k;gl.height=innerHeight*k;g.viewport(0,0,gl.width,gl.height)};rs();addEventListener('resize',rs);
+gsap.ticker.add(t=>{sx+=(mx-sx)*.06;sy+=(my-sy)*.06;g.uniform2f(U('r'),gl.width,gl.height);g.uniform2f(U('m'),sx,sy);g.uniform1f(U('t'),t);g.uniform1f(U('s'),sp);g.drawArrays(g.TRIANGLES,0,3)});
+ScrollTrigger.create({trigger:document.body,start:'top top',end:'bottom bottom',onUpdate:s=>sp=s.progress*3})}
+/* ---- hero letters ---- */
+const h1=$('#h1'),sl=s=>[...s].map(c=>`<span class="L"><i>${c}</i></span>`).join('');h1.setAttribute('aria-label',h1.textContent);h1.innerHTML=`<span class="ln">${sl('Form')}</span><span class="ln">${sl('ative')}</span>`;
+const Ls=$$('.L');
+gsap.set(Ls,{yPercent:60,rotateX:-100,opacity:0,transformOrigin:'50% 100%'});gsap.set(['#hp','#hb'],{opacity:0,y:40});
+gsap.timeline({delay:.2}).to(Ls,{yPercent:0,rotateX:0,opacity:1,duration:1.8,ease:'elastic.out(1,.6)',stagger:.07}).to(['#hp','#hb'],{opacity:1,y:0,duration:1.4,ease:'expo.out',stagger:.15},'-=1.2');
+gsap.ticker.add(()=>{Ls.forEach((l,i)=>{const r=l.getBoundingClientRect(),dx=px-(r.left+r.width/2),dy=py-(r.top+r.height/2),d=Math.hypot(dx,dy),k=Math.max(0,1-d/380);l.firstChild.style.transform=`translate(${-dx*k*.08}px,${-k*40-dy*k*.04}px) rotate(${dx*k*-.04}deg) scale(${1+k*.18})`})});
+gsap.to('#h1',{scale:1.15,yPercent:-12,opacity:.2,ease:'none',scrollTrigger:{trigger:'.hero',start:'top top',end:'bottom top',scrub:true}});
+/* ---- marquee ---- */
+$$('.mq[data-dup]').forEach(m=>m.innerHTML+=m.innerHTML);
+$$('.mq').forEach((m,i)=>{const d=i%2?-1:1,w=m.scrollWidth/2;let x=0;gsap.ticker.add(()=>{x+=d*(1+Math.abs(vel)*.7);m.style.transform=`translateX(${-(((x%w)+w)%w)}px)`})});
+/* ---- draggable physics graph ---- */
+const gc=$('#gc'),x=gc.getContext('2d'),dp=Math.min(devicePixelRatio,2);let W,H,N=[],drag=null,moved=0,mp={x:-999,y:-999};
+const nm=['Website','Sign-in','Payments','Database','Orders','Emails','Search','Admin','Reports'],extra=['New idea','Chat','Settings','Alerts','Profile','Uploads'];
+const ed=[[0,1],[0,2],[2,3],[1,3],[3,4],[4,5],[0,6],[7,3],[7,8],[8,3],[2,4]];
+function gz(){const r=gc.getBoundingClientRect();W=r.width;H=r.height;gc.width=W*dp;gc.height=H*dp;x.setTransform(dp,0,0,dp,0,0)}gz();addEventListener('resize',gz);
+nm.forEach((t,i)=>N.push({t,x:W*.5+Math.cos(i)*W*.25,y:H*.5+Math.sin(i*1.7)*H*.25,vx:0,vy:0}));
+let eg=ed.map(e=>[...e]);
+const st=()=>W<1100,tp=()=>st()?Math.min($('.gt').offsetHeight+140,H*.55):90,cy=()=>st()?(tp()+H)/2:H/2,rk=()=>st()?.55:1,rl=()=>Math.min(190,W*.4,(H-tp())*.45);
+const wd=n=>(n.w||(n.w=x.measureText(n.t).width+44));
+function hit(px_,py_){const r=gc.getBoundingClientRect();px_-=r.left;py_-=r.top;x.font='500 17px Inter,sans-serif';return N.find(n=>Math.abs(px_-n.x)<wd(n)/2&&Math.abs(py_-n.y)<24)}
+gc.addEventListener('pointerdown',e=>{const n=hit(e.clientX,e.clientY);moved=0;if(n){const r=gc.getBoundingClientRect();mp.x=e.clientX-r.left;mp.y=e.clientY-r.top;drag=n;gc.setPointerCapture(e.pointerId)}});
+gc.addEventListener('pointermove',e=>{const r=gc.getBoundingClientRect();mp.x=e.clientX-r.left;mp.y=e.clientY-r.top;moved++;gc.dataset.c=hit(e.clientX,e.clientY)?'Drag':'Add'});
+gc.addEventListener('pointerleave',()=>{mp.x=mp.y=-999});gc.addEventListener('pointercancel',()=>{drag=null});
+gc.addEventListener('touchstart',e=>{const t=e.touches[0];if(hit(t.clientX,t.clientY))e.preventDefault()},{passive:false});
+gc.addEventListener('pointerup',e=>{if(!drag&&moved<4&&N.length<16){const r=gc.getBoundingClientRect(),t=extra[N.length%extra.length],b=N.reduce((a,n)=>Math.hypot(n.x-(e.clientX-r.left),n.y-(e.clientY-r.top))<Math.hypot(a.x-(e.clientX-r.left),a.y-(e.clientY-r.top))?n:a);N.push({t,x:e.clientX-r.left,y:e.clientY-r.top,vx:0,vy:0});eg.push([N.length-1,N.indexOf(b)])}drag=null;if(e.pointerType!=='mouse')mp.x=mp.y=-999});
+gsap.ticker.add(t=>{x.clearRect(0,0,W,H);x.font='500 17px Inter,sans-serif';x.textAlign='center';x.textBaseline='middle';
+N.forEach((a,i)=>{a.vx+=(W/2-a.x)*.0006;a.vy+=(cy()-a.y)*.0006;N.forEach((b,j)=>{if(i<j){let dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy+80,f=5200*rk()/d2,d=Math.sqrt(d2);a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}});
+const dx=a.x-mp.x,dy=a.y-mp.y,d=Math.hypot(dx,dy)||1;if(!drag&&d<150){a.vx+=dx/d*(150-d)*.012;a.vy+=dy/d*(150-d)*.012}});
+eg.forEach(([i,j])=>{const a=N[i],b=N[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,f=(d-rl())*.006;a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f});
+N.forEach(n=>{if(!isFinite(n.x+n.y+n.vx+n.vy)){n.x=W/2+Math.random()*60;n.y=cy();n.vx=n.vy=0}if(n===drag){n.x=mp.x;n.y=mp.y;n.vx=n.vy=0}else{n.vx*=.86;n.vy*=.86;n.x+=n.vx;n.y+=n.vy}n.x=Math.max(66,Math.min(W-66,n.x));n.y=Math.max(tp(),Math.min(H-50,n.y))});
+eg.forEach(([i,j],k)=>{const a=N[i],b=N[j],gr=x.createLinearGradient(a.x,a.y,b.x,b.y);gr.addColorStop(0,'rgba(138,61,255,.8)');gr.addColorStop(1,'rgba(255,46,147,.8)');x.strokeStyle=gr;x.lineWidth=1.5;x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke();const p=(t*.35+k*.27)%1;x.fillStyle='#ff8a3d';x.beginPath();x.arc(a.x+(b.x-a.x)*p,a.y+(b.y-a.y)*p,3.5,0,7);x.fill()});
+N.forEach(n=>{const w=wd(n),h=n===drag;x.save();x.shadowColor=h?'#ff2e93':'rgba(138,61,255,.5)';x.shadowBlur=h?40:18;x.fillStyle='rgba(20,14,36,.92)';x.strokeStyle=h?'#ff2e93':'rgba(244,239,230,.4)';x.lineWidth=1.5;x.beginPath();x.roundRect(n.x-w/2,n.y-22,w,44,22);x.fill();x.stroke();x.restore();x.fillStyle='#f4efe6';x.fillText(n.t,n.x,n.y+1)})});
+/* ---- stacked cards ---- */
+$$('.sc').forEach((c,i,a)=>{c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect();c.style.setProperty('--mx',(e.clientX-r.left)+'px');c.style.setProperty('--my',(e.clientY-r.top)+'px')});
+ if(a[i+1])gsap.to(c,{scale:.93,filter:'brightness(.45)',ease:'none',scrollTrigger:{trigger:a[i+1],start:'top 75%',end:'top 15%',scrub:true}});
+ gsap.from(c,{y:120,rotateX:8,opacity:0,duration:1.4,ease:'expo.out',scrollTrigger:{trigger:c,start:'top 92%'}})});
+/* ---- terminal typing ---- */
+const L=[['$ ','formative open ./acme-shop','k'],['',' Found 214 files. Nothing was uploaded.','d'],['$ ','ask claude-code "what does payments do?"','k'],['',' Mode: plan (can read and search, can’t edit)','p'],['','It takes the cart total, asks the card','f'],['','company to charge it, then saves the receipt','f'],['','to the database. Want a diagram of it?','f']];
+ScrollTrigger.create({trigger:'.term',start:'top 75%',once:true,onEnter:async()=>{const pre=$('#tp');for(const [a,b,c] of L){const s=document.createElement('span');s.className=c;pre.append(a,s);for(const ch of b){s.textContent+=ch;await new Promise(r=>setTimeout(r,c=='k'?38:14))}pre.append('\n');await new Promise(r=>setTimeout(r,350))}}});
+/* ---- numbers + scramble ---- */
+$$('[data-n]').forEach(e=>{const o={v:0};ScrollTrigger.create({trigger:e,start:'top 88%',once:true,onEnter:()=>gsap.to(o,{v:+e.dataset.n,duration:2.4,ease:'expo.out',onUpdate:()=>e.textContent=Math.round(o.v)})})});
+$$('.mo').forEach(el=>{const t=el.textContent;ScrollTrigger.create({trigger:el,start:'top 92%',once:true,onEnter:()=>{let i=0;const id=setInterval(()=>{el.textContent=[...t].map((c,k)=>k<i||c==' '?c:'ABCDEFGHKMNPRSTUXZ#%'[Math.random()*20|0]).join('');if(i++>=t.length)clearInterval(id)},30)}})});
+$$('.sec h2,.cta h2').forEach(h=>gsap.from(h,{y:80,opacity:0,rotateX:-30,transformOrigin:'0 100%',duration:1.6,ease:'expo.out',scrollTrigger:{trigger:h,start:'top 88%'}}));
+$$('.stp div,.chips span,.fx div,.tk div,.hp a,.q').forEach((e,i)=>gsap.from(e,{y:60,opacity:0,duration:1.2,ease:'expo.out',delay:(i%4)*.08,clearProps:'transform,opacity',scrollTrigger:{trigger:e,start:'top 92%'}}));
+/* ---- circle reveal ---- */
+gsap.to('#rvl',{clipPath:'circle(150% at 50% 62%)',ease:'none',scrollTrigger:{trigger:'.rv',start:'top top',end:'bottom bottom',scrub:.5}});
+/* ---- cta follows pointer ---- */
+const ch=$('#ch');ch.parentElement.addEventListener('pointermove',e=>{const r=ch.getBoundingClientRect();gsap.to(ch,{rotateY:((e.clientX-r.left)/r.width-.5)*14,rotateX:-((e.clientY-r.top)/r.height-.5)*14,duration:1,ease:'power3'})});ch.style.perspective='800px';
+/* ---- cursor + magnetic + anchors ---- */
+if(fine&&!rm){document.body.classList.add('nc');const c=$('#cur'),qx=gsap.quickTo(c,'x',{duration:.4,ease:'power3'}),qy=gsap.quickTo(c,'y',{duration:.4,ease:'power3'});
+ addEventListener('pointermove',e=>{qx(e.clientX);qy(e.clientY);const t=e.target.closest('[data-c]');c.textContent=t?t.dataset.c:'';gsap.to(c,{scale:t?(t.dataset.c.length>3?2.2:1.8):1,backgroundColor:t?'rgba(255,255,255,.9)':'rgba(255,255,255,0)',duration:.4})});
+ $$('[data-m]').forEach(b=>{b.addEventListener('pointermove',e=>{const r=b.getBoundingClientRect();gsap.to(b,{x:(e.clientX-r.left-r.width/2)*.3,y:(e.clientY-r.top-r.height/2)*.4,duration:.5,ease:'power3'})});b.addEventListener('pointerleave',()=>gsap.to(b,{x:0,y:0,duration:1.2,ease:'elastic.out(1,.35)'}))})}
+$$('.q button').forEach(b=>b.addEventListener('click',()=>{const q=b.parentElement,o=q.classList.contains('on');$$('.q.on').forEach(x=>x.classList.remove('on'));if(!o)q.classList.add('on');setTimeout(()=>ScrollTrigger.refresh(),750)}));
+$$('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=$(a.getAttribute('href'));if(t&&lenis){e.preventDefault();lenis.scrollTo(t,{duration:1.8})}}));
+</script>
+</body>
 </html>
